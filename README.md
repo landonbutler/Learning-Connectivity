@@ -1,1 +1,1 @@
-# Agent of Information - Multi-Agent Swarm
+# Age of Information - Multi-Agent Swarm
