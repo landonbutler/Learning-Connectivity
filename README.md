@@ -1,1 +1,1 @@
-# Agent of Information - Multi-agent Swarm
+# Agent of Information - Multi-Agent Swarm
