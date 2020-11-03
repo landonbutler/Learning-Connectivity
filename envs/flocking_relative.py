@@ -24,8 +24,6 @@ class FlockingRelativeEnv(gym.Env):
         # config.read(config_file)
         # config = config['flock']
 
-        self.mean_pooling = True  # normalize the adjacency matrix by the number of neighbors or not
-        self.centralized = True
 
         # number states per agent
         self.nx_system = 4
@@ -34,9 +32,9 @@ class FlockingRelativeEnv(gym.Env):
         # number of actions per agent
         self.nu = 2 
 
+
         # default problem parameters
         self.n_agents = 100  # int(config['network_size'])
-        self.comm_radius = 0.9  # float(config['comm_radius'])
         self.dt = 0.01  # #float(config['system_dt'])
         self.v_max = 5.0  #  float(config['max_vel_init'])
         self.r_max = 1.0 #10.0  #  float(config['max_rad_init'])
@@ -63,6 +61,19 @@ class FlockingRelativeEnv(gym.Env):
         self.line1 = None
         self.action_scalar = 10.0
 
+        self.carrier_frequency_ghz = 2.4
+        self.min_SINR = 5
+        self.gaussian_noise_dBm = -90
+        self.gaussian_noise_mW = 10**(self.gaussian_noise_dBm/10)
+        self.path_loss_exponent = 2
+
+        # (Buffer for each agent) x (Field for each other agent in an agent's buffer) x (posX, posY, velX, velY, TransTime, NumHops)
+        self.buffer_features = 6
+        self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.buffer_features))
+        self.network_buffer[:,:,4] = -1 # motivates agents to get information in the first time step
+        self.timestep = 0
+        self.is_interference = True
+
         self.seed()
 
     def params_from_cfg(self, args):
@@ -84,17 +95,34 @@ class FlockingRelativeEnv(gym.Env):
         self.v_bias = self.v_max
         self.dt = args.getfloat('dt')
 
+        self.carrier_frequency_ghz = args.getfloat('carrier_frequency_ghz')
+        self.min_SINR = args.getfloat('min_SINR')
+        self.gaussian_noise_dBm = args.getfloat('gaussian_noise_dBm')
+        self.gaussian_noise_mW = 10**(self.gaussian_noise_dBm/10)
+        self.path_loss_exponent = args.getfloat('path_loss_exponent')
+
+
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def step(self, u):
+    def step(self, attempted_transmissions):
+        move() # using current acceleration/velocity/position, moves the agent to their current position
 
-        #u = np.reshape(u, (-1, 2))
-        assert u.shape == (self.n_agents, self.nu)
-        #u = np.clip(u, a_min=-self.max_accel, a_max=self.max_accel)
-        self.u = u * self.action_scalar
+        successful_tranmissions = attempted_transmission
+        if self.is_interference:
+            successful_tranmissions  = interference(attempted_transmissions) # calculates interference from attempted transmissions
 
+        update_buffers(successful_tranmissions) # for successful transmissions, updates the buffers of those receiving information
+
+        compute_accelerations() # uses buffers to decide new acceleration values
+
+        self.timestep = self.timestep + 1
+
+        return (self.state_values, self.state_network), self.instant_cost(), False, {}
+
+
+    def move():
         # x position
         self.x[:, 0] = self.x[:, 0] + self.x[:, 2] * self.dt + self.u[:, 0] * self.dt * self.dt * 0.5
         # y position
@@ -104,9 +132,6 @@ class FlockingRelativeEnv(gym.Env):
         # y velocity
         self.x[:, 3] = self.x[:, 3] + self.u[:, 1] * self.dt
 
-        self.compute_helpers()
-
-        return (self.state_values, self.state_network), self.instant_cost(), False, {}
 
     def compute_helpers(self):
 
@@ -254,49 +279,58 @@ class FlockingRelativeEnv(gym.Env):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-    # def render(self, mode='human'):
-    #     """
-    #     Render the environment with agents as points in 2D space
-    #     """
-    #
-    #     quiver_flag = True
-    #     if self.fig is None:
-    #         # plt.ion()
-    #         fig = plt.figure()
-    #         self.ax = fig.add_subplot(111)
-    #         line1, = self.ax.plot(self.x[:, 0], self.x[:, 1], 'bo', label='n = 0 s')  # Returns a tuple of line objects, thus the comma
-    #         self.ax.plot([0], [0], 'kx')
-    #         plt.ylim(-0.5 * self.r_max, 1.0 * self.r_max)
-    #         plt.xlim(-0.5 * self.r_max, 1.0 * self.r_max)
-    #         a = gca()
-    #         a.set_xticklabels(a.get_xticks(), font)
-    #         a.set_yticklabels(a.get_yticks(), font)
-    #         # plt.title('GNN Controller')
-    #         self.fig = fig
-    #         self.line1 = line1
-    #
-    #         if quiver_flag:
-    #             X = self.x[:, 0]
-    #             Y = self.x[:, 1]
-    #             U = self.x[:, 2]
-    #             V = self.x[:, 3]
-    #
-    #             self.ax.quiver(X, Y, U, V, color='k')
-    #
-    #     else:
-    #         if quiver_flag:
-    #             X = self.x[:, 0]
-    #             Y = self.x[:, 1]
-    #             U = self.x[:, 2]
-    #             V = self.x[:, 3]
-    #
-    #             self.ax.quiver(X, Y, U, V, color='k')
-    #
-    #         self.ax.plot(self.x[:, 0], self.x[:, 1], 'go', label='n = 300 s')  # Returns a tuple of line objects, thus the comma
-    #         self.ax.legend()
-    #
-    #         self.fig.canvas.draw()
-    #         self.fig.canvas.flush_events()
-
     def close(self):
         pass
+
+    def interference(attempted_transmissions):
+        # network_transmission_power is an adjacency matrix, containing the power of each attempted
+        # transmissions in dBm
+        power_mw = 10**(network_transmission_power / 10)
+        free_space_path_loss = 10*self.path_loss_exponent*np.log10(np.sqrt(self.r2)) + 20*np.log10(self.carrier_frequency_ghz*10**9)-147.55 #dB
+        channel_gain = np.power(.1,(free_space_path_loss)/10) # this is now a unitless ratio
+        numerator = np.multiply(power_mW, channel_gain) # this is in mW, numerator of the SINR 
+        interference_sum = np.sum(numerator,axis=1)
+        denominator = this.gaussian_noise_mW + np.expand_dims(interference_sum, axis=1) - numerator
+        np.seterr(divide = 'ignore') 
+        SINR = 10*np.log10(np.divide(numerator,denominator))
+        np.seterr(divide = 'warn') 
+        successful_tranmissions = np.zeros((self.n_agents,self.n_agents))
+        successful_tranmissions[SINR >= self.min_SINR] = 1
+        return successful_tranmissions
+
+    def update_buffers(successful_tranmissions):
+        # Given successful transmissions, update the buffers of those agents that need it
+        # rows = transmitting agent
+        # columns = agent being requested information from
+
+        # TO-DO : Convert this to NumPy vector operations
+        for i in range(self.n_agents):
+            agents_information = self.network_buffer[i,:,:]
+            for j in range(self.n_agents):
+                if successful_tranmissions[i,j] != 0:
+                    requested_information = self.network_buffer[j,:,:]
+                    for k in range(self.n_agents): 
+                        if requested_information[k,4] > agents_information[k,4]:
+                            agents_information[k,:] = requested_information[k,:]
+                            agents_information[k,5] = requested_information[k,5] + 1 # add a hop to num hops
+            self.network_buffer[i,:,:] = agents_information
+
+        # now, update each agent's information in their buffer with current state information
+        for i in range(self.n_agents):
+            self.network_buffer[i,i,0:4] = self.x[i,0:4]
+            self.network_buffer[i,i,4] = self.timestep
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
