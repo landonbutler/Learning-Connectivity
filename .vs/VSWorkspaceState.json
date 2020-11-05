@@ -1,8 +1,11 @@
 {
   "ExpandedNodes": [
     "",
+    "\\envs",
+    "\\learner",
+    "\\models",
     "\\StableBaselinesTutorials"
   ],
-  "SelectedNode": "\\StableBaselinesTutorials\\CustomPolicy.py",
+  "SelectedNode": "\\envs\\flocking_relative.py",
   "PreviewInSolutionExplorer": false
 }
