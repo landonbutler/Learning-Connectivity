@@ -11,11 +11,7 @@ font = {'family': 'sans-serif',
         'weight': 'bold',
         'size': 14}
 
-# TODO: add functions to change # of agents, comm radius, and initial velocity, and initial radius (and then reset)
-# and adjust the initialization radius accordingly
-
-
-class FlockingRelativeEnv(gym.Env):
+class FlockingCommFailureEnv(gym.Env):
 
     def __init__(self):
 
@@ -319,18 +315,3 @@ class FlockingRelativeEnv(gym.Env):
         for i in range(self.n_agents):
             self.network_buffer[i,i,0:4] = self.x[i,0:4]
             self.network_buffer[i,i,4] = self.timestep
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

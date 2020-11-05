@@ -3,9 +3,9 @@
     "",
     "\\envs",
     "\\learner",
-    "\\models",
+    "\\learner\\__pycache__",
     "\\StableBaselinesTutorials"
   ],
-  "SelectedNode": "\\envs\\flocking_relative.py",
+  "SelectedNode": "\\train.py",
   "PreviewInSolutionExplorer": false
 }
