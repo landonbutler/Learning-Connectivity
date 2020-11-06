@@ -11,48 +11,21 @@ font = {'family': 'sans-serif',
         'weight': 'bold',
         'size': 14}
 
-class FlockingCommFailureEnv(gym.Env):
+class StationaryEnv(gym.Env):
 
     def __init__(self):
 
-        # config_file = path.join(path.dirname(__file__), "params_flock.cfg")
-        # config = configparser.ConfigParser()
-        # config.read(config_file)
-        # config = config['flock']
-
-
-        # number states per agent
-        self.nx_system = 4
-        # numer of observations per agent
-        self.n_features = 6
-        # number of actions per agent
-        self.nu = 2 
-
-
         # default problem parameters
         self.n_agents = 100  # int(config['network_size'])
-        self.dt = 0.01  # #float(config['system_dt'])
-        self.v_max = 5.0  #  float(config['max_vel_init'])
         self.r_max = 1.0 #10.0  #  float(config['max_rad_init'])
-        #self.std_dev = 0.1  #  float(config['std_dev']) * self.dt
-
-        self.comm_radius2 = self.comm_radius * self.comm_radius
-        self.vr = 1 / self.comm_radius2 + np.log(self.comm_radius2)
-        self.v_bias = self.v_max 
-
+        self.n_features = 6 # (PosX, PosY, Value (like temp), TransmitPower, TransTime, Parent Agent)
+        
         # intitialize state matrices
         self.x = None
-        self.u = None
-        self.mean_vel = None
-        self.init_vel = None
+        self.action_space = spaces.Box(low=0, high=1, shape=(self.n_agents,), dtype=np.float32)
 
-        self.max_accel = 1
-        self.action_space = spaces.Box(low=-self.max_accel, high=self.max_accel, shape=(2 * self.n_agents,),
-                                       dtype=np.float32)
-
-        self.observation_space = spaces.Box(low=-np.Inf, high=np.Inf, shape=(self.n_agents, self.n_features),
+        self.observation_space = spaces.Box(low=-np.Inf, high=np.Inf, shape=(self.n_agents, self.n_agents, self.n_features),
                                             dtype=np.float32)
-
         self.fig = None
         self.line1 = None
         self.action_scalar = 10.0
@@ -64,38 +37,40 @@ class FlockingCommFailureEnv(gym.Env):
         self.path_loss_exponent = 2
 
         # (Buffer for each agent) x (Field for each other agent in an agent's buffer) x (posX, posY, velX, velY, TransTime, NumHops)
-        self.buffer_features = 6
-        self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.buffer_features))
-        self.network_buffer[:,:,4] = -1 # motivates agents to get information in the first time step
+        # self.buffer_features = 6
+        # self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.buffer_features))
+        # self.network_buffer[:,:,4] = -1 # motivates agents to get information in the first time step
+        
+        
         self.timestep = 0
         self.is_interference = True
 
         self.seed()
 
-    def params_from_cfg(self, args):
-        self.comm_radius = args.getfloat('comm_radius')
-        self.comm_radius2 = self.comm_radius * self.comm_radius
-        self.vr = 1 / self.comm_radius2 + np.log(self.comm_radius2)
+    #def params_from_cfg(self, args):
+        #self.comm_radius = args.getfloat('comm_radius')
+        #self.comm_radius2 = self.comm_radius * self.comm_radius
+        #self.vr = 1 / self.comm_radius2 + np.log(self.comm_radius2)
 
 
-        self.n_agents = args.getint('n_agents')
-        self.r_max = self.r_max * np.sqrt(self.n_agents)
+        #self.n_agents = args.getint('n_agents')
+        #self.r_max = self.r_max * np.sqrt(self.n_agents)
 
-        self.action_space = spaces.Box(low=-self.max_accel, high=self.max_accel, shape=(2 * self.n_agents,),
-                                       dtype=np.float32)
+        #self.action_space = spaces.Box(low=-self.max_accel, high=self.max_accel, shape=(2 * self.n_agents,),
+        #                              dtype=np.float32)
 
-        self.observation_space = spaces.Box(low=-np.Inf, high=np.Inf, shape=(self.n_agents, self.n_features),
-                                            dtype=np.float32)
+        #self.observation_space = spaces.Box(low=-np.Inf, high=np.Inf, shape=(self.n_agents, self.n_features),
+        #                                    dtype=np.float32)
 
-        self.v_max = args.getfloat('v_max')
-        self.v_bias = self.v_max
-        self.dt = args.getfloat('dt')
+        #self.v_max = args.getfloat('v_max')
+        #self.v_bias = self.v_max
+        #self.dt = args.getfloat('dt')
 
-        self.carrier_frequency_ghz = args.getfloat('carrier_frequency_ghz')
-        self.min_SINR = args.getfloat('min_SINR')
-        self.gaussian_noise_dBm = args.getfloat('gaussian_noise_dBm')
-        self.gaussian_noise_mW = 10**(self.gaussian_noise_dBm/10)
-        self.path_loss_exponent = args.getfloat('path_loss_exponent')
+        #self.carrier_frequency_ghz = args.getfloat('carrier_frequency_ghz')
+        #self.min_SINR = args.getfloat('min_SINR')
+        #self.gaussian_noise_dBm = args.getfloat('gaussian_noise_dBm')
+        #self.gaussian_noise_mW = 10**(self.gaussian_noise_dBm/10)
+        #self.path_loss_exponent = args.getfloat('path_loss_exponent')
 
 
     def seed(self, seed=None):
@@ -103,32 +78,16 @@ class FlockingCommFailureEnv(gym.Env):
         return [seed]
 
     def step(self, attempted_transmissions):
-        move() # using current acceleration/velocity/position, moves the agent to their current position
-
         successful_tranmissions = attempted_transmission
         if self.is_interference:
             successful_tranmissions  = interference(attempted_transmissions) # calculates interference from attempted transmissions
 
         update_buffers(successful_tranmissions) # for successful transmissions, updates the buffers of those receiving information
 
-        compute_accelerations() # uses buffers to decide new acceleration values
-
         self.timestep = self.timestep + 1
 
         # TO-DO : make timesteps to be relative before passing back
         return (self.state_values, self.state_network), self.instant_cost(), False, {}
-
-
-    def move():
-        # x position
-        self.x[:, 0] = self.x[:, 0] + self.x[:, 2] * self.dt + self.u[:, 0] * self.dt * self.dt * 0.5
-        # y position
-        self.x[:, 1] = self.x[:, 1] + self.x[:, 3] * self.dt + self.u[:, 1] * self.dt * self.dt * 0.5
-        # x velocity
-        self.x[:, 2] = self.x[:, 2] + self.u[:, 0] * self.dt
-        # y velocity
-        self.x[:, 3] = self.x[:, 3] + self.u[:, 1] * self.dt
-
 
     def compute_helpers(self):
 
@@ -156,27 +115,16 @@ class FlockingCommFailureEnv(gym.Env):
             self.state_network = self.adj_mat
 
     def get_stats(self):
-
         stats = {}
-
-        stats['vel_diffs'] = np.sqrt(np.sum(np.power(self.x[:, 2:4] - np.mean(self.x[:, 2:4], axis=0), 2), axis=1))
-
-        stats['min_dists'] = np.min(np.sqrt(self.r2), axis=0)
+        stats['average_time_delay'] = instant_cost()
         return stats
 
-    def instant_cost(self):  # sum of differences in velocities
-         curr_variance = -1.0 * np.sum((np.var(self.x[:, 2:4], axis=0)))
-         return curr_variance
-         # return curr_variance #+ self.potential(self.r2)
-         # versus_initial_vel = -1.0 * np.sum(np.sum(np.square(self.x[:, 2:4] - self.mean_vel), axis=1))
-         # return versus_initial_vel
+    def instant_cost(self):  # average time_delay for a piece of information
+         return np.mean(self.observation_space[:,:,4])
 
-         # squares = np.multiply(self.diff[:, :, 2], self.diff[:, :, 2]) + np.multiply(self.diff[:, :, 3], self.diff[:, :, 3])
-         # # # return -1.0  * self.dt * (np.sum(np.sum(squares)) + self.potential(self.r2)) / self.n_agents #/ self.n_agents
-         # return -1.0  * (np.sum(np.sum(squares))) / self.n_agents / self.n_agents
 
     def reset(self):
-        x = np.zeros((self.n_agents, self.nx_system))
+        x = np.zeros((self.n_agents, 2))
         degree = 0
         min_dist = 0
         min_dist_thresh = 0.1  # 0.25
@@ -191,10 +139,6 @@ class FlockingCommFailureEnv(gym.Env):
             x[:, 0] = length * np.cos(angle)
             x[:, 1] = length * np.sin(angle)
 
-            bias = np.random.uniform(low=-self.v_bias, high=self.v_bias, size=(2,))
-            x[:, 2] = np.random.uniform(low=-self.v_max, high=self.v_max, size=(self.n_agents,)) + bias[0] 
-            x[:, 3] = np.random.uniform(low=-self.v_max, high=self.v_max, size=(self.n_agents,)) + bias[1] 
-
             # compute distances between agents
             x_loc = np.reshape(x[:, 0:2], (self.n_agents,2,1))
             a_net = np.sum(np.square(np.transpose(x_loc, (0,2,1)) - np.transpose(x_loc, (2,0,1))), axis=2)
@@ -202,54 +146,13 @@ class FlockingCommFailureEnv(gym.Env):
 
             # compute minimum distance between agents and degree of network to check if good initial configuration
             min_dist = np.sqrt(np.min(np.min(a_net)))
-            a_net = a_net < self.comm_radius2
             degree = np.min(np.sum(a_net.astype(int), axis=1))
 
         # keep good initialization
-        self.mean_vel = np.mean(x[:, 2:4], axis=0)
-        self.init_vel = x[:, 2:4]
         self.x = x
-        #self.a_net = self.get_connectivity(self.x)
         self.compute_helpers()
         return (self.state_values, self.state_network)
 
-    def controller(self, centralized=None):
-        """
-        The controller for flocking from Turner 2003.
-        Returns: the optimal action
-        """
-
-        if centralized is None:
-            centralized = self.centralized
-
-        # TODO use the helper quantities here more? 
-        potentials = np.dstack((self.diff, self.potential_grad(self.diff[:, :, 0], self.r2), self.potential_grad(self.diff[:, :, 1], self.r2)))
-        if not centralized:
-            potentials = potentials * self.adj_mat.reshape(self.n_agents, self.n_agents, 1) 
-
-        p_sum = np.sum(potentials, axis=1).reshape((self.n_agents, self.nx_system + 2))
-        controls =  np.hstack(((-  p_sum[:, 4] - p_sum[:, 2]).reshape((-1, 1)), (- p_sum[:, 3] - p_sum[:, 5]).reshape(-1, 1)))
-        controls = np.clip(controls, -10, 10)
-        controls = controls / self.action_scalar
-        return controls
-
-    def potential_grad(self, pos_diff, r2):
-        """
-        Computes the gradient of the potential function for flocking proposed in Turner 2003.
-        Args:
-            pos_diff (): difference in a component of position among all agents
-            r2 (): distance squared between agents
-        Returns: corresponding component of the gradient of the potential
-        """
-        grad = -2.0 * np.divide(pos_diff, np.multiply(r2, r2)) + 2 * np.divide(pos_diff, r2)
-        grad[r2 > self.comm_radius] = 0
-        return grad 
-
-    def potential(self, r2):
-        p = np.reciprocal(r2) + np.log(r2)
-        p[r2 > self.comm_radius2] = self.vr
-        np.fill_diagonal(p, 0)
-        return np.sum(np.sum(p))
 
     def render(self, mode='human'):
         """
@@ -267,7 +170,7 @@ class FlockingCommFailureEnv(gym.Env):
             a = gca()
             a.set_xticklabels(a.get_xticks(), font)
             a.set_yticklabels(a.get_yticks(), font)
-            plt.title('GNN Controller')
+            plt.title('Stationary')
             self.fig = fig
             self.line1 = line1
 
@@ -302,17 +205,12 @@ class FlockingCommFailureEnv(gym.Env):
 
         # TO-DO : Convert this to NumPy vector operations
         for i in range(self.n_agents):
-            agents_information = self.network_buffer[i,:,:]
+            agents_information = self.observation_space[i,:,:]
             for j in range(self.n_agents):
                 if successful_tranmissions[i,j] != 0:
-                    requested_information = self.network_buffer[j,:,:]
+                    requested_information = self.observation_space[j,:,:]
                     for k in range(self.n_agents): 
                         if requested_information[k,4] > agents_information[k,4]:
                             agents_information[k,:] = requested_information[k,:]
                     agents_information[j,5] = i
-            self.network_buffer[i,:,:] = agents_information
-
-        # now, update each agent's information in their buffer with current state information
-        for i in range(self.n_agents):
-            self.network_buffer[i,i,0:4] = self.x[i,0:4]
-            self.network_buffer[i,i,4] = self.timestep
+            self.observation_space[i,:,:] = agents_information

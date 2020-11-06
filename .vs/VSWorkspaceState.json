@@ -4,8 +4,9 @@
     "\\envs",
     "\\learner",
     "\\learner\\__pycache__",
+    "\\models",
     "\\StableBaselinesTutorials"
   ],
-  "SelectedNode": "\\train.py",
+  "SelectedNode": "\\envs\\FlockingCommFailure.py",
   "PreviewInSolutionExplorer": false
 }
