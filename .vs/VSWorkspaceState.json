@@ -3,10 +3,9 @@
     "",
     "\\envs",
     "\\learner",
-    "\\learner\\__pycache__",
     "\\models",
     "\\StableBaselinesTutorials"
   ],
-  "SelectedNode": "\\envs\\FlockingCommFailure.py",
+  "SelectedNode": "\\envs\\StationaryTest.py",
   "PreviewInSolutionExplorer": false
 }
