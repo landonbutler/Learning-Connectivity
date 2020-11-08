@@ -15,7 +15,7 @@ class StationaryEnv(gym.Env):
 
     def __init__(self):
         # default problem parameters
-        self.n_agents = 100  # int(config['network_size'])
+        self.n_agents = 10 # int(config['network_size'])
         self.r_max = 50 #10.0  #  float(config['max_rad_init'])
         self.n_features = 6 # (PosX, PosY, Value (like temp), TransmitPower, TransTime, Parent Agent)
         
@@ -179,8 +179,8 @@ class StationaryEnv(gym.Env):
                     requested_information = self.network_buffer[j,:,:]
                     for k in range(self.n_agents): 
                         if requested_information[k,4] > agents_information[k,4]:
-                            agents_information[k,:] = requested_information[k,:]
-                    agents_information[j,5] = j
+                            agents_information[k,:] = requested_information[k,:]  
+                    agents_information[j,5] = i
                     agents_information[j,3] = successful_tranmissions[i,j]
             new_network_buffer[i,:,:] = agents_information
         self.network_buffer = new_network_buffer
