@@ -17,7 +17,7 @@ class StationaryEnv(gym.Env):
         # default problem parameters
         self.n_agents = 10 # int(config['network_size'])
         self.r_max = 50 #10.0  #  float(config['max_rad_init'])
-        self.n_features = 6 # (PosX, PosY, Value (like temp), TransmitPower, TransTime, Parent Agent)
+        self.n_features = 6 # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
         
         # intitialize state matrices
         self.x = None
@@ -36,8 +36,8 @@ class StationaryEnv(gym.Env):
         self.path_loss_exponent = 2
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
-        self.network_buffer[:,:,4] = -100 # motivates agents to get information in the first time step
-        self.network_buffer[:,:,5] = -1 # no parent references yet
+        self.network_buffer[:,:,0] = -100 # motivates agents to get information in the first time step
+        self.network_buffer[:,:,1] = -1 # no parent references yet
         
         self.shape = "circle" # square or circle, default is square
         self.timestep = 0
@@ -75,9 +75,13 @@ class StationaryEnv(gym.Env):
 
         self.timestep = self.timestep + 1
 
-        # timesteps won't be relative within env, but need to be when passed out 
+        # timesteps and positions won't be relative within env, but need to be when passed out 
         relative_network_buffer = self.network_buffer.copy()
-        relative_network_buffer[:,:,4] = self.network_buffer[:,:,4] - self.timestep
+        relative_network_buffer[:,:,0] = self.network_buffer[:,:,0] - self.timestep
+
+        for i in range(self.n_agents):
+            relative_network_buffer[i,:,2:4] = self.network_buffer[i,:,2:4] - self.network_buffer[i,i,2:4]
+
         return relative_network_buffer, self.instant_cost(), False, {}
     
     def reset(self):
@@ -103,9 +107,9 @@ class StationaryEnv(gym.Env):
 
         self.x = x
         for i in range(self.n_agents):
-            self.network_buffer[i,i,0] = self.x[i,0] # an agent's x position is stored in its respective buffer
-            self.network_buffer[i,i,1] = self.x[i,1] # y position
-            self.network_buffer[i,i,4] = 0 # I know my location at timestep 0
+            self.network_buffer[i,i,2] = self.x[i,0] # an agent's x position is stored in its respective buffer
+            self.network_buffer[i,i,3] = self.x[i,1] # y position
+            self.network_buffer[i,i,0] = 0 # I know my location at timestep 0
         self.compute_distances()
 
 
@@ -147,7 +151,7 @@ class StationaryEnv(gym.Env):
         return stats
 
     def instant_cost(self):  # average time_delay for a piece of information
-        return np.mean(self.network_buffer[:,:,4] - self.timestep)
+        return np.mean(self.network_buffer[:,:,0] - self.timestep)
     
     def interference(self, attempted_transmissions):
         # network_transmission_power is an adjacency matrix, containing the power of each attempted
@@ -178,13 +182,13 @@ class StationaryEnv(gym.Env):
                 if i != j and successful_tranmissions[i,j] != 0:
                     requested_information = self.network_buffer[j,:,:]
                     for k in range(self.n_agents): 
-                        if requested_information[k,4] > agents_information[k,4]:
+                        if requested_information[k,0] > agents_information[k,0]:
                             agents_information[k,:] = requested_information[k,:]  
-                    agents_information[j,5] = i
-                    agents_information[j,3] = successful_tranmissions[i,j]
+                    agents_information[j,1] = i
+                    agents_information[j,5] = successful_tranmissions[i,j]
             new_network_buffer[i,:,:] = agents_information
         self.network_buffer = new_network_buffer
 
         # my information is updated
         for i in range(self.n_agents):
-            self.network_buffer[i,i,4] = self.timestep + 1
+            self.network_buffer[i,i,0] = self.timestep + 1

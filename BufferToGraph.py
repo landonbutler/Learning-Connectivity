@@ -21,10 +21,10 @@ class BufferToGraph():
         for i in range(n):
             for j in range(n):
                 agent_buffer = network_buffer[i,:,:]
-                # agent_buffer[j,4] should always be the timestep delay
-                # agent_buffer[j,5] should always be the parent node (transmitter)
-                if agent_buffer[j,5] != -1:
-                    transmitters.append(i * n + agent_buffer[j,5])
+                # agent_buffer[j,0] should always be the timestep delay
+                # agent_buffer[j,1] should always be the parent node (transmitter)
+                if agent_buffer[j,1] != -1:
+                    transmitters.append(i * n + agent_buffer[j,1])
                     receivers.append(i * n + j)
 
         data_dict = {

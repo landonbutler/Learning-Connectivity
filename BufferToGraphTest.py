@@ -19,6 +19,8 @@ class BufferToGraphTest(unittest.TestCase):
             attempt_comm = self.generate_attempted_communications(int(self.stat.n_agents / 2), 15)
             self.stat.is_interference = False
             observation, reward, done, info = self.stat.step(attempt_comm)
+            if i == 40:
+                print(observation)
         graph_model = bfg.networkBufferGraph(observation)
         graphs_nx = utils_np.graphs_tuple_to_networkxs(graph_model)
         ax = plt.figure(figsize=(25, 25)).gca()
@@ -42,3 +44,4 @@ class BufferToGraphTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
