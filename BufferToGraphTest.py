@@ -18,7 +18,8 @@ class BufferToGraphTest(unittest.TestCase):
         for i in range(50):
             attempt_comm = self.generate_attempted_communications(int(self.stat.n_agents / 2), 15)
             self.stat.is_interference = False
-            observation, reward, done, info = self.stat.step(attempt_comm)
+            action = self.stat.action_space.sample()
+            observation, reward, done, info = self.stat.step(action)
             if i == 40:
                 print(observation)
         graph_model = bfg.networkBufferGraph(observation)
@@ -33,14 +34,13 @@ class BufferToGraphTest(unittest.TestCase):
         plt.savefig('buffer_to_graphs_kk.png')
         print(graph_model)
 
-    def generate_attempted_communications(self, trans_per_agent, max_trans_pow):
-        comm_mat = np.zeros((self.stat.n_agents, self.stat.n_agents))
-        
-        rand_trans_pow = np.random.rand(self.stat.n_agents,self.stat.n_agents) * max_trans_pow
-        for i in range(self.stat.n_agents):
-            choice_comm = np.random.choice(self.stat.n_agents, trans_per_agent, replace=False)
-            comm_mat[i,choice_comm] = 1
-        return np.multiply(comm_mat, rand_trans_pow)
+        # just the n-vector of who to communicate with
+    def generate_attempted_communications(self, trans_per_agent):
+        action = self.stat.action_space.sample()
+
+        for i in range (self.stat.n_agents):
+
+        return np.random.choice(self.stat.n_agents, size=(self.stat.n_agents,trans_per_agent), replace=False)
 
 if __name__ == '__main__':
     unittest.main()
