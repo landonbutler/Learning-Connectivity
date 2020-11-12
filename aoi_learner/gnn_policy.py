@@ -1,7 +1,7 @@
 import tensorflow as tf
 from graph_nets import graphs
 from stable_baselines.common.policies import ActorCriticPolicy
-import rl_comm.models as models
+import aoi_learner.gnn_models as models
 from aoi_envs.Stationary import StationaryEnv
 from gym.spaces import MultiDiscrete
 
@@ -29,6 +29,8 @@ class GNNPolicy(ActorCriticPolicy):
             model_module = models.AggregationNet
         elif model_type == 'nonlinear':
             model_module = models.NonLinearGraphNet
+        else:
+            raise ValueError('Unknown model type!')
 
         batch_size, n_node, nodes, n_edge, edges, senders, receivers, globs = StationaryEnv.unpack_obs(
             self.processed_obs, ob_space)
@@ -60,7 +62,7 @@ class GNNPolicy(ActorCriticPolicy):
                 value_graph = self.value_model(agent_graph)
 
                 # sum the outputs of robot nodes to compute value
-                reshaped_nodes = tf.reshape(value_graph.nodes, (batch_size, len(ac_space.nvec)))
+                reshaped_nodes = tf.reshape(value_graph.nodes, (batch_size, -1))
                 self._value_fn = tf.reduce_sum(reshaped_nodes, axis=1, keepdims=True)
                 self.q_value = None  # unused by PPO2
 

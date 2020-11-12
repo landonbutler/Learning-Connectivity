@@ -103,7 +103,6 @@ def run_experiment(args, section_name='', env=None, test_env=None):
         'n_layers': args.getint('n_layers', 3),
         'reducer': args.get('reducer', 'mean'),
         'model_type': args.get('model_type', 'identity'),
-        'n_node_feat': args.getint('n_node_feat', 3)
     }
 
     policy_fn = GNNPolicy

@@ -24,10 +24,11 @@ N_AGENTS = 10
 class StationaryEnv(gym.Env):
 
     def __init__(self):
+        super(StationaryEnv, self).__init__()
         # default problem parameters
         self.n_agents = N_AGENTS  # int(config['network_size'])
         self.r_max = 50  # 10.0  #  float(config['max_rad_init'])
-        self.n_features = N_NODE_FEAT + 1  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
+        self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
         # intitialize state matrices
         self.x = None
@@ -42,12 +43,12 @@ class StationaryEnv(gym.Env):
                                      dtype=np.float32)),
                 # upperbound, n fully connected trees (n-1) edges
                 # To-Do ensure these bounds don't affect anything
-                ("edges", spaces.Box(shape=(self.n_agents * (self.n_agents - 1), N_EDGE_FEAT), low=-np.Inf, high=np.Inf,
+                ("edges", spaces.Box(shape=(self.n_agents * self.n_agents, N_EDGE_FEAT), low=-np.Inf, high=np.Inf,
                                      dtype=np.float32)),
                 # senders and receivers will each be one endpoint of an edge, and thus should be same size as edges
-                ("senders", spaces.Box(shape=(self.n_agents * (self.n_agents - 1), 1), low=0, high=self.n_agents,
+                ("senders", spaces.Box(shape=(self.n_agents * self.n_agents, 1), low=0, high=self.n_agents,
                                        dtype=np.float32)),
-                ("receivers", spaces.Box(shape=(self.n_agents * (self.n_agents - 1), 1), low=0, high=self.n_agents,
+                ("receivers", spaces.Box(shape=(self.n_agents * self.n_agents, 1), low=0, high=self.n_agents,
                                          dtype=np.float32)),
                 ("globals", spaces.Box(shape=(1, 1), low=0, high=EPISODE_LENGTH, dtype=np.float32)),
             ]
@@ -111,24 +112,24 @@ class StationaryEnv(gym.Env):
         # for successful transmissions, updates the buffers of those receiving information
 
         self.timestep = self.timestep + 1
+        return self.get_relative_network_buffer_as_dict(), - self.instant_cost(average_dist), False, {}
 
-        # timesteps and positions won't be relative within env, but need to be when passed out 
+    def get_relative_network_buffer_as_dict(self):
+        # timesteps and positions won't be relative within env, but need to be when passed out
         relative_network_buffer = self.network_buffer.copy()
         relative_network_buffer[:, :, 0] = self.network_buffer[:, :, 0] - self.timestep
 
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
         relative_network_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1,
                                                                                                      2)
-
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
-        temp = self.map_to_observation_space(relative_network_buffer)
-        return temp, self.instant_cost(average_dist), False, {}
+        return self.map_to_observation_space(relative_network_buffer)
 
     def map_to_observation_space(self, network_buffer):
         n = network_buffer.shape[0]
         n_nodes = n * n
 
-        transmitters = []  # Indices of nodes transmitting the edges
+        senders = []  # Indices of nodes transmitting the edges
         receivers = []  # Indices of nodes receiving the edges
         for i in range(n):
             for j in range(n):
@@ -136,16 +137,23 @@ class StationaryEnv(gym.Env):
                 # agent_buffer[j,0] should always be the timestep delay
                 # agent_buffer[j,1] should always be the parent node (transmitter)
                 if agent_buffer[j, 1] != -1:
-                    transmitters.append(i * n + agent_buffer[j, 1])
+                    senders.append(i * n + agent_buffer[j, 1])
                     receivers.append(i * n + j)
+                else:
+                    senders.append(-1)
+                    receivers.append(-1)
+
         edges = np.zeros(shape=(len(receivers), 1))
         nodes = np.reshape(network_buffer, (n_nodes, -1))
         nodes[:, 1] = 0  # zero out the neighbor node index
-        step = self.timestep
+
+        step = np.reshape([self.timestep], (1, 1))
+        senders = np.reshape(senders, (-1, 1))
+        receivers = np.reshape(receivers, (-1, 1))
 
         data_dict = {
             "n_node": n_nodes,
-            "senders": transmitters,
+            "senders": senders,
             "receivers": receivers,
             "edges": edges,
             "nodes": nodes,
@@ -189,7 +197,9 @@ class StationaryEnv(gym.Env):
             self.network_buffer[i,i,3] = self.x[i,1] # y position
             self.network_buffer[i,i,0] = 0 # I know my location at timestep 0
         """
+        # TODO: remove the below statement?
         self.compute_distances()
+        return self.get_relative_network_buffer_as_dict()
 
     def render(self, mode='human'):
         """
@@ -263,7 +273,7 @@ class StationaryEnv(gym.Env):
         for i in range(self.n_agents):
             agents_information = self.network_buffer[i, :, :].copy()
             j = successful_transmissions[i]
-            transmit_distance += np.linalg.norm(self.x[i, 2:4], self.x[j, 2:4])
+            transmit_distance += np.linalg.norm(self.x[i, 2:4] - self.x[j, 2:4])
             if i != j:
                 requested_information = self.network_buffer[j, :, :]
                 for k in range(self.n_agents):
@@ -276,7 +286,8 @@ class StationaryEnv(gym.Env):
 
         # my information is updated
         self.network_buffer[:, :, 0] += np.eye(self.n_agents)
-        return transmit_distance
+        avg_transmit_distance = transmit_distance / self.n_agents
+        return avg_transmit_distance
 
         """
         for i in range(self.n_agents):
@@ -288,9 +299,9 @@ class StationaryEnv(gym.Env):
         assert tf is not None, "Function unpack_obs() is not available if Tensorflow is not imported."
 
         # assume flattened box
-        # TODO compute n_nodes and n_edges based on the ob_space.shape[0] like below, this might be a quadratic eq
+        # TODO compute n_nodes and n_edges based on the ob_space.shape[0] like below, but this might be a quadratic eq
         n_nodes = N_AGENTS * N_AGENTS  # (ob_space.shape[0] - 1) // (MAX_EDGES * (2 + N_EDGE_FEAT) + dim_nodes)
-        n_edges = N_AGENTS * (N_AGENTS - 1)
+        n_edges = N_AGENTS * N_AGENTS
 
         # unpack node and edge data from flattened array
         # order given by self.keys = ['nodes', 'edges', 'senders', 'receivers', 'step']
