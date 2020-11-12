@@ -1,4 +1,5 @@
 from stable_baselines.common.policies import ActorCriticPolicy, nature_cnn
+import tensorflow as tf
 
 # GNN Communication Policy
 class CommunicationPolicy(ActorCriticPolicy):
