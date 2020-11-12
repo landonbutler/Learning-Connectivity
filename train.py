@@ -6,11 +6,11 @@ from stable_baselines.common.policies import ActorCriticPolicy, register_policy,
 from stable_baselines.common.vec_env import DummyVecEnv
 from stable_baselines import PPO2
 
-from learner.CommunicationPolicy import CommunicationPolicy
+from aoi_learner.CommunicationPolicy import CommunicationPolicy
 
 
 def run_experiment(args):
-    env_name = "FlockingCommFailure"
+    env_name = 'StationaryEnv-v0'
     config_file = 'cfg/FlockingCommFailure.cfg'
 
     env = gym.make(env_name)
@@ -23,10 +23,9 @@ def run_experiment(args):
     env.seed(seed)
     random.seed(seed)
     np.random.seed(seed)
-    torch.manual_seed(seed)
 
-    # initialize params tuple
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # torch.manual_seed(seed)
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     model = PPO2(CommunicationPolicy, env, verbose=1)
 

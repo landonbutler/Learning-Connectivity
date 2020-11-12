@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from Stationary import StationaryEnv
+from aoi_envs.Stationary import StationaryEnv
 
 class StationaryTest(unittest.TestCase):
     def setUp(self):
