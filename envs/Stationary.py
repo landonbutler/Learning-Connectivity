@@ -1,5 +1,6 @@
 import gym
 from gym import spaces, error, utils
+from gym.spaces import Box
 from gym.utils import seeding
 import numpy as np
 import configparser
@@ -11,19 +12,34 @@ font = {'family': 'sans-serif',
         'weight': 'bold',
         'size': 14}
 
+N_AGENTS = 10
+R_MAX = 50
+N_FEATURES = 6
 
+ACTION_SCALAR = 10
+
+CARRIER_FREQUENCY_GHZ = 2.4
+MIN_SINR = 2
+GAUSSIAN_NOISE_DBM = -90
+PATH_LOSS_EXPONENT = 2
+
+SHAPE = "circle"
 EPISODE_LENGTH = 500
+
+SEED = None
 
 class StationaryEnv(gym.Env):
 
     def __init__(self):
         # default problem parameters
-        self.n_agents = 10 # int(config['network_size'])
-        self.r_max = 50 #10.0  #  float(config['max_rad_init'])
-        self.n_features = 6 # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
+        self.n_agents = N_AGENTS # int(config['network_size'])
+        self.r_max = R_MAX #10.0  #  float(config['max_rad_init'])
+        self.n_features = N_FEATURES # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
         
         # intitialize state matrices
         self.x = None
+
+        self.episode_length = EPISODE_LENGTH
 
         self.action_space = spaces.MultiDiscrete([self.n_agents] * self.n_agents) # each agent has their own action space of a n_agent vector of weights
         
@@ -35,67 +51,67 @@ class StationaryEnv(gym.Env):
                 ("nodes", nodes_space),
                 # upperbound, n fully connected trees (n-1) edges
                 # To-Do ensure these bounds don't affect anything
-                ("edges", Box(shape=(self.n_agents*(self.n_agents-1),1), low=-np.Inf, high=np.Inf, dtype=np.float32)), 
+                ("edges", spaces.Box(shape=(self.n_agents*(self.n_agents-1),1), low=-np.Inf, high=np.Inf, dtype=np.float32)), 
                 # senders and receivers will each be one endpoint of an edge, and thus should be same size as edges
-                ("senders", Box(shape=(self.n_agents*(self.n_agents-1),1), low=0, high=self.n_agents, dtype=np.float32)),
-                ("receivers", Box(shape=(self.n_agents*(self.n_agents-1),1), low=0, high=self.n_agents, dtype=np.float32)),
-                ("step", Box(shape=(1, 1), low=0, high=EPISODE_LENGTH, dtype=np.float32)),
+                ("senders", Box(shape=(self.n_agents*(self.n_agents-1),1), low=0, high=self.n_agents**2, dtype=np.float32)),
+                ("receivers", Box(shape=(self.n_agents*(self.n_agents-1),1), low=0, high=self.n_agents**2, dtype=np.float32)),
+                ("step", Box(shape=(1, 1), low=0, high=self.episode_length, dtype=np.float32)),
             ]
         )
 
         self.fig = None
         self.line1 = None
-        self.action_scalar = 10.0
+        self.action_scalar = ACTION_SCALAR
 
-        self.carrier_frequency_ghz = 2.4
-        self.min_SINR = 2
-        self.gaussian_noise_dBm = -90
+        """
+        self.carrier_frequency_ghz = CARRIER_FREQUENCY_GHZ
+        self.min_SINR = MIN_SINR
+        self.gaussian_noise_dBm = GAUSSIAN_NOISE_DBM
         self.gaussian_noise_mW = 10**(self.gaussian_noise_dBm/10)
-        self.path_loss_exponent = 2
+        self.path_loss_exponent = PATH_LOSS_EXPONENT
+        """
+
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         self.network_buffer[:,:,0] = -100 # motivates agents to get information in the first time step
         self.network_buffer[:,:,1] = -1 # no parent references yet
         
-        self.shape = "circle" # square or circle, default is square
+        self.shape = SHAPE # square or circle, default is square
         self.timestep = 0
         
         self.is_interference = True
 
-        self.seed()
+        self.seed(SEED)
 
+    """
     def params_from_cfg(self, args):
         self.action_space = spaces.Box(low=-self.max_accel, high=self.max_accel, shape=(2 * self.n_agents,),
                                       dtype=np.float32)
-
         self.observation_space = spaces.Box(low=-np.Inf, high=np.Inf, shape=(self.n_agents, self.n_features),
                                             dtype=np.float32)
-
         self.carrier_frequency_ghz = args.getfloat('carrier_frequency_ghz')
         self.min_SINR = args.getfloat('min_SINR')
         self.gaussian_noise_dBm = args.getfloat('gaussian_noise_dBm')
         self.gaussian_noise_mW = 10**(self.gaussian_noise_dBm/10)
         self.path_loss_exponent = args.getfloat('path_loss_exponent')
-
         self.is_interference = args.getbool('is_interference')
-
+    """
 
     def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
+        self.np_random, self.seed = seeding.np_random(seed)
 
     # input will be an n-vector of index of who to communicate with
     # in the future, we could create a nxn continuous action space of transmit powers,
     # we would keep the max k transmits
-    def step(self, attempted_transmissions):
-        successful_tranmissions = attempted_transmissions
-
-        # Transmit power can be incorporated later
+    def step(self, transmission_indicies):
+        # Transmit power can be incorporated later, will need new input
         """
         if self.is_interference:
             successful_tranmissions  = self.interference(attempted_transmissions) # calculates interference from attempted transmissions
         """
-        average_dist = self.update_buffers(successful_tranmissions) # for successful transmissions, updates the buffers of those receiving information
+
+        # for successful transmissions, updates the buffers of those receiving information
+        average_dist = self.update_buffers(transmission_indicies) 
 
         self.timestep = self.timestep + 1
 
@@ -107,8 +123,8 @@ class StationaryEnv(gym.Env):
         relative_network_buffer[:,:,2:4] = self.network_buffer[:,:,2:4] - self.x[:,0:2].reshape(self.n_agents,1,2)
 
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
-        temp = self.map_to_observation_space(relative_network_buffer)
-        return temp, self.instant_cost(average_dist), False, {}
+        obs_space = self.map_to_observation_space(relative_network_buffer)
+        return obs_space, self.instant_cost(average_dist), False, {}
     
     def reset(self):
         x = np.zeros((self.n_agents, 2))
@@ -206,23 +222,25 @@ class StationaryEnv(gym.Env):
         # return np.multiply(successful_tranmissions, attempted_transmissions)
 
     # just take indices, not array
-    def update_buffers(self, successful_tranmissions):
-        # Given successful transmissions, update the buffers of those agents that need it
-        # rows = transmitting agent
-        # columns = agent being requested information from
+    def update_buffers(self, transmissions_indices):
+        # Given transmissions_indices, update the buffers of those agents that need it
 
+        total_dist = 0
         # TO-DO : Convert this to NumPy vector operations
         new_network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         for i in range(self.n_agents):
             agents_information = self.network_buffer[i,:,:].copy()
-            for j in range(self.n_agents):
-                if i != j and successful_tranmissions[i,j] != 0:
-                    requested_information = self.network_buffer[j,:,:]
-                    for k in range(self.n_agents): 
-                        if requested_information[k,0] > agents_information[k,0]:
-                            agents_information[k,:] = requested_information[k,:]  
-                    agents_information[j,1] = i
-                    agents_information[j,5] = successful_tranmissions[i,j]
+            target = transmissions_indices[i]
+            assert(target > 0 and target < self.n_agents, "index to transmit to is OOB")
+            if i != target:
+                requested_information = self.network_buffer[target,:,:]
+                for j in range(self.n_agents): 
+                    if requested_information[k,0] > agents_information[k,0]:
+                        agents_information[k,:] = requested_information[k,:]  
+                agents_information[j,1] = i
+                agents_information[j,5] = successful_tranmissions[i,j]
+                total_dist += np.sqrt((agents_information[i,i,2]-requested_information[target,target,2])**2 
+                                      + (agents_information[i,i,3]-requested_information[target,target,3])**2)
             new_network_buffer[i,:,:] = agents_information
         self.network_buffer = new_network_buffer
 
@@ -234,25 +252,41 @@ class StationaryEnv(gym.Env):
             self.network_buffer[i,i,0] = self.timestep + 1
         """
 
-    def networkBufferGraph(network_buffer):
-        n = network_buffer.shape[0]
-        n_nodes = n * n
+        return total_dist / self.n_agents
 
-        transmitters = []  # Indices of nodes transmitting the edges
+    def map_to_observation_space(self, relative_network_buffer):
+        n = self.n_agents
+
+        edges = [] # We don't have any edge features, fill with 0
+        senders = []  # Indices of nodes transmitting the edges
         receivers = []  # Indices of nodes receiving the edges
         for i in range(n):
             for j in range(n):
                 agent_buffer = network_buffer[i,:,:]
                 # agent_buffer[j,0] should always be the timestep delay
                 # agent_buffer[j,1] should always be the parent node (transmitter)
-                if agent_buffer[j,1] != -1:
-                    transmitters.append(i * n + agent_buffer[j,1])
-                    receivers.append(i * n + j)
+                if i != j:
+                    if agent_buffer[j,1] != -1:
+                        sender = i * n + agent_buffer[j,1]
+                        receiver = i * n + j
+                        edges.append(0)
+                        senders.append(sender)
+                        receivers.append(receiver)
+                    else:
+                        edges.append(-1)
+                        senders.append(-1)
+                        receivers.append(-1)
+        
+        # delete parent references
+        node_features = np.delete(relative_network_buffer,1,3) 
+        node_features_flat = np.reshape(node_features, (n * n, 5))
 
-        data_dict = {
-            "n_node": n_nodes,
-            "senders": transmitters,
+        obs_space_dict = {
+            "nodes": node_features_flat,
+            "edges": TEMP,
+            "senders": senders,
             "receivers": receivers,
+            "step": self.timestep
         }
 
-        return utils_np.data_dicts_to_graphs_tuple([data_dict])
+        return obs_space_dict

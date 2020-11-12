@@ -1,11 +1,15 @@
 import unittest
 import numpy as np
+import gym
 from Stationary import StationaryEnv
+from gym.envs.registration import register
 
 class StationaryTest(unittest.TestCase):
     def setUp(self):
-        self.stat = StationaryEnv()
-        self.stat.reset()
+        
+        
+        self.env = gym.make("StationaryEnvTest-v1")
+        self.env.reset()
 
     def test_reset_and_render(self):
         print("attempting reset")
