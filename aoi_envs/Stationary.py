@@ -14,11 +14,8 @@ font = {'family': 'sans-serif',
         'size': 14}
 
 EPISODE_LENGTH = 500
-
 N_NODE_FEAT = 6
 N_EDGE_FEAT = 1
-
-N_AGENTS = 10
 
 
 class StationaryEnv(gym.Env):
@@ -26,7 +23,7 @@ class StationaryEnv(gym.Env):
     def __init__(self):
         super(StationaryEnv, self).__init__()
         # default problem parameters
-        self.n_agents = N_AGENTS  # int(config['network_size'])
+        self.n_agents = 10  # int(config['network_size'])
         self.r_max = 50  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
@@ -299,13 +296,11 @@ class StationaryEnv(gym.Env):
         assert tf is not None, "Function unpack_obs() is not available if Tensorflow is not imported."
 
         # assume flattened box
-        # TODO compute n_nodes and n_edges based on the ob_space.shape[0] like below, but this might be a quadratic eq
-        n_nodes = N_AGENTS * N_AGENTS  # (ob_space.shape[0] - 1) // (MAX_EDGES * (2 + N_EDGE_FEAT) + dim_nodes)
-        n_edges = N_AGENTS * N_AGENTS
+        n_nodes = (ob_space.shape[0] - 1) // (2 + N_EDGE_FEAT + N_NODE_FEAT)
 
         # unpack node and edge data from flattened array
-        # order given by self.keys = ['nodes', 'edges', 'senders', 'receivers', 'step']
-        shapes = ((n_nodes, N_NODE_FEAT), (n_edges, N_EDGE_FEAT), (n_edges, 1), (n_edges, 1), (1, 1))
+        # order given by self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
+        shapes = ((n_nodes, N_NODE_FEAT), (n_nodes, N_EDGE_FEAT), (n_nodes, 1), (n_nodes, 1), (1, 1))
         sizes = [np.prod(s) for s in shapes]
         tensors = tf.split(obs, sizes, axis=1)
         tensors = [tf.reshape(t, (-1,) + s) for (t, s) in zip(tensors, shapes)]
