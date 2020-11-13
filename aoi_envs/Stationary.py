@@ -140,6 +140,7 @@ class StationaryEnv(gym.Env):
                     senders.append(-1)
                     receivers.append(-1)
 
+        # TODO add distances between nodes as edge features
         edges = np.zeros(shape=(len(receivers), 1))
         nodes = np.reshape(network_buffer, (n_nodes, -1))
         nodes[:, 1] = 0  # zero out the neighbor node index
@@ -181,7 +182,7 @@ class StationaryEnv(gym.Env):
 
         self.x = x
 
-        # test this
+        # TODO test this
         self.network_buffer[:, :, 2] = np.where(np.eye(self.n_agents, dtype=np.bool),
                                                 self.x[:, 0].reshape(self.n_agents, 1), self.network_buffer[:, :, 2])
         self.network_buffer[:, :, 3] = np.where(np.eye(self.n_agents, dtype=np.bool),
@@ -194,8 +195,9 @@ class StationaryEnv(gym.Env):
             self.network_buffer[i,i,3] = self.x[i,1] # y position
             self.network_buffer[i,i,0] = 0 # I know my location at timestep 0
         """
-        # TODO: remove the below statement?
-        self.compute_distances()
+
+        if self.is_interference:
+            self.compute_distances()
         return self.get_relative_network_buffer_as_dict()
 
     def render(self, mode='human'):
@@ -231,10 +233,10 @@ class StationaryEnv(gym.Env):
                                                                                     self.diff[:, :, 1])
         np.fill_diagonal(self.r2, np.Inf)
 
-    def get_stats(self):
-        stats = {}
-        stats['average_time_delay'] = self.instant_cost()
-        return stats
+    # def get_stats(self):
+    #     stats = {}
+    #     stats['average_time_delay'] = self.instant_cost()
+    #     return stats
 
     def instant_cost(self, ave_dist):  # average time_delay for a piece of information plus comm distance
         return - np.mean(self.network_buffer[:, :, 0] - self.timestep) + ave_dist
@@ -257,19 +259,14 @@ class StationaryEnv(gym.Env):
         # successful_tranmissions[SINR >= self.min_SINR] = 1
         # return np.multiply(successful_tranmissions, attempted_transmissions)
 
-    # just take indices, not array
-    def update_buffers(self, successful_transmissions):
-        # Given successful transmissions, update the buffers of those agents that need it
-        # rows = transmitting agent
-        # columns = agent being requested information from
-
-        # TO-DO : Convert this to NumPy vector operations
+    def update_buffers(self, transmission_idx):
+        # TODO : Convert this to NumPy vector operations
         transmit_distance = 0
 
         new_network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         for i in range(self.n_agents):
             agents_information = self.network_buffer[i, :, :].copy()
-            j = successful_transmissions[i]
+            j = transmission_idx[i]
             transmit_distance += np.linalg.norm(self.x[i, 2:4] - self.x[j, 2:4])
             if i != j:
                 requested_information = self.network_buffer[j, :, :]
@@ -283,13 +280,9 @@ class StationaryEnv(gym.Env):
 
         # my information is updated
         self.network_buffer[:, :, 0] += np.eye(self.n_agents)
-        avg_transmit_distance = transmit_distance / self.n_agents
+        avg_transmit_distance = transmit_distance / self.n_agents  # TODO divide by number of transmissions per agent
         return avg_transmit_distance
 
-        """
-        for i in range(self.n_agents):
-            self.network_buffer[i,i,0] = self.timestep + 1
-        """
 
     @staticmethod
     def unpack_obs(obs, ob_space):
@@ -319,7 +312,7 @@ class StationaryEnv(gym.Env):
         n_edge = tf.reduce_sum(tf.cast(mask, tf.float32), axis=1)
         mask = tf.reshape(mask, (-1,))
 
-        # flatten edge data
+        # flatten edge data to be n_batch_size * n_nodes
         edges = tf.reshape(edges, (-1, N_EDGE_FEAT))
         senders = tf.reshape(senders, (-1,))
         receivers = tf.reshape(receivers, (-1,))

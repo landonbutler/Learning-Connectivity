@@ -8,7 +8,7 @@ from gym.spaces import MultiDiscrete
 
 class GNNPolicy(ActorCriticPolicy):
     """
-    Policy object that implements actor critic, using a MLP (2 layers of 64)
+    Policy object that implements actor critic, using a Graph Neural Network.
 
     :param sess: (TensorFlow session) The current TensorFlow session
     :param ob_space: (Gym Space) The observation space of the environment
@@ -18,6 +18,7 @@ class GNNPolicy(ActorCriticPolicy):
     :param n_batch: (int) The number of batch to run (n_envs * n_steps)
     :param reuse: (bool) If the policy is reusable or not
     """
+    # TODO fix the parameter list in the comment to match the actual params
 
     def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse=False,
                  num_processing_steps=None, latent_size=None, n_layers=None, reducer=None, n_gnn_layers=None,
@@ -46,6 +47,7 @@ class GNNPolicy(ActorCriticPolicy):
 
         with tf.variable_scope("model", reuse=reuse):
             with tf.variable_scope("value", reuse=reuse):
+                # Disabled if n_gnn_layers = 1
                 for i in range(n_gnn_layers - 1):
                     self.value_model_i = model_module(num_processing_steps=num_processing_steps,
                                                       latent_size=latent_size,
@@ -62,7 +64,9 @@ class GNNPolicy(ActorCriticPolicy):
                 value_graph = self.value_model(agent_graph)
 
                 # sum the outputs of robot nodes to compute value
-                reshaped_nodes = tf.reshape(value_graph.nodes, (batch_size, -1))
+                reshaped_nodes = tf.reshape(value_graph.nodes, (batch_size, -1))  # batch_size, n_agents * n_agents * 1
+
+                # TODO try summing only over the diagonal - the root nodes of each agents tree.
                 self._value_fn = tf.reduce_sum(reshaped_nodes, axis=1, keepdims=True)
                 self.q_value = None  # unused by PPO2
 
@@ -80,24 +84,24 @@ class GNNPolicy(ActorCriticPolicy):
                 self.policy_model = model_module(num_processing_steps=num_processing_steps,
                                                  latent_size=latent_size,
                                                  n_layers=n_layers, reducer=reducer,
-                                                 edge_output_size=1, out_init_scale=1.0,
+                                                 node_output_size=1, out_init_scale=1.0,
                                                  name="policy_model")
                 policy_graph = self.policy_model(agent_graph)
-
-                edge_values = policy_graph.edges
-
-                # keep only edges for which senders are the landmarks, receivers are robots
-                sender_type = tf.cast(tf.gather(nodes[:, 0], senders), tf.bool)
-                receiver_type = tf.cast(tf.gather(nodes[:, 0], receivers), tf.bool)
-                mask = tf.logical_and(tf.logical_not(sender_type), receiver_type)
-                masked_edges = tf.boolean_mask(edge_values, tf.reshape(mask, (-1,)), axis=0)
+                # edge_values = policy_graph.edges
+                #
+                # # keep only edges for which senders are the landmarks, receivers are robots
+                # sender_type = tf.cast(tf.gather(nodes[:, 0], senders), tf.bool)
+                # receiver_type = tf.cast(tf.gather(nodes[:, 0], receivers), tf.bool)
+                # mask = tf.logical_and(tf.logical_not(sender_type), receiver_type)
+                # masked_edges = tf.boolean_mask(edge_values, tf.reshape(mask, (-1,)), axis=0)
 
                 if isinstance(ac_space, MultiDiscrete):
                     n_actions = tf.cast(tf.reduce_sum(ac_space.nvec), tf.int32)
                 else:
                     n_actions = tf.cast(ac_space.n, tf.int32)
 
-                self._policy = tf.reshape(masked_edges, (batch_size, n_actions))
+                # TODO how does the below code change for continuous action spaces?
+                self._policy = tf.reshape(policy_graph.nodes, (batch_size, n_actions))  # n_actions = n_agents ^ 2
                 self._proba_distribution = self.pdtype.proba_distribution_from_flat(self._policy)
 
         self._setup_init()
@@ -127,5 +131,5 @@ class GNNPolicy(ActorCriticPolicy):
     @staticmethod
     def policy_param_string(p):
         """Return identifier string for policy parameter dict."""
-        return 'gnnfwd'
+        return 'gnn_policy'
 

@@ -23,7 +23,7 @@ class Identity(snt.AbstractModule):
 
 class AggregationNet(snt.AbstractModule):
     """
-    Aggregation Net with learned aggregation filter
+    Aggregation Net with a linear aggregation filter
     """
 
     def __init__(self,
@@ -61,6 +61,7 @@ class AggregationNet(snt.AbstractModule):
         def make_mlp():
             return snt.nets.MLP([latent_size] * n_layers, activate_final=True)
 
+        # Edge block copies the node features onto the edges.
         core_a = blocks.EdgeBlock(
             edge_model_fn=lambda: Identity(),
             use_edges=False,
@@ -69,7 +70,7 @@ class AggregationNet(snt.AbstractModule):
             use_globals=False,
             name='LinearNodeAggGCN_core_a')
 
-        # Then, edge data is aggregated onto the node.
+        # Then, edge data is aggregated onto the node by the reducer function.
         core_b = blocks.NodeBlock(
             node_model_fn=lambda: Identity(),
             use_received_edges=True,
@@ -98,14 +99,14 @@ class AggregationNet(snt.AbstractModule):
             self._output_transform = modules.GraphIndependent(edge_fn, node_fn, global_fn, name="output")
 
     def _build(self, input_op):
-        latent = self._encoder(input_op)
-        output_ops = [self._decoder(latent)]
+        latent = self._encoder(input_op)  # latent size = 16
+        output_ops = [self._decoder(latent)]  # K = 0 data
         for i in range(self._num_processing_steps):
             for c in self._cores:
                 latent = c(latent)
             decoded_op = self._decoder(latent)
-            output_ops.append(decoded_op)
-        return self._output_transform(utils_tf.concat(output_ops, axis=1))
+            output_ops.append(decoded_op)  # K = 1, 2, 3... data
+        return self._output_transform(utils_tf.concat(output_ops, axis=1))  # K * 16 for every node
 
 
 class NonLinearGraphNet(snt.AbstractModule):
@@ -124,6 +125,7 @@ class NonLinearGraphNet(snt.AbstractModule):
                  out_init_scale=5.0,
                  name="AggregationNet"):
         super(NonLinearGraphNet, self).__init__(name=name)
+        # TODO try using global features
 
         if num_processing_steps is None:
             self._num_processing_steps = 5
@@ -148,6 +150,9 @@ class NonLinearGraphNet(snt.AbstractModule):
         def make_mlp():
             return snt.nets.MLP([latent_size] * n_layers, activate_final=False)
 
+        # Edge model f^e(v_sender, v_receiver, e)     -   in the linear linear model, f^e = v_sender
+        # Average over all the received edge features to get e'
+        # Node model f^v(v, e'), but in the linear model, it was just f^v = e'
         self._core = modules.GraphNetwork(
             edge_model_fn=make_mlp,
             node_model_fn=make_mlp,
@@ -176,9 +181,9 @@ class NonLinearGraphNet(snt.AbstractModule):
 
     def _build(self, input_op):
         latent = self._encoder(input_op)
-        output_ops = [self._decoder(latent)]
+        output_ops = [self._decoder(latent)]  # K = 0
         for i in range(self._num_processing_steps):
             latent = self._core(latent)
             decoded_op = self._decoder(latent)
-            output_ops.append(decoded_op)
+            output_ops.append(decoded_op)  # K = 1, 2, 3, ...
         return self._output_transform(utils_tf.concat(output_ops, axis=1))
