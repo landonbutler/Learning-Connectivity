@@ -32,16 +32,16 @@ class StationaryTest(unittest.TestCase):
 
     def test_update_buffers(self):
         attempt_comm = self.generate_attempted_communications(int(self.env.env.n_agents / 2), 15)
-        print(attempt_comm)
+        # print(attempt_comm)
         self.env.env.update_buffers(attempt_comm)
-        print(self.env.env.network_buffer)
+        # print(self.env.env.network_buffer)
 
     def test_multiple_steps_without_interference(self):
         for i in range(5):
             attempt_comm = self.generate_attempted_communications(int(self.env.env.n_agents / 2), 15)
             self.env.is_interference = False
             observation, reward, done, info = self.env.step(attempt_comm)
-        print(observation)
+        # print(observation)
 
     def generate_attempted_communications(self, trans_per_agent, max_trans_pow):
         return self.env.action_space.sample()
@@ -49,11 +49,15 @@ class StationaryTest(unittest.TestCase):
     def test_run_episode(self):
         self.env = gym.make('StationaryEnv-v0')
         observation = self.env.reset()
-        for i in range(50):
+        done = False
+        ep_reward = 0
+        while not done:
             self.env.is_interference = False
             action = self.env.action_space.sample()
             observation, reward, done, info = self.env.step(action)
-            print(observation)
+            ep_reward += reward
+            # print(observation)
+        print(ep_reward)
 
     # # TODO data_dict_to_networkx wants lists for the receivers and senders, not np arrays
     # def test_graph_creation_from_buffer(self):

@@ -23,8 +23,8 @@ class StationaryEnv(gym.Env):
     def __init__(self):
         super(StationaryEnv, self).__init__()
         # default problem parameters
-        self.n_agents = 5  # int(config['network_size'])
-        self.r_max = 50  # 10.0  #  float(config['max_rad_init'])
+        self.n_agents = 10  # int(config['network_size'])
+        self.r_max = 5.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
         # intitialize state matrices
@@ -161,24 +161,17 @@ class StationaryEnv(gym.Env):
 
     def reset(self):
         x = np.zeros((self.n_agents, 2))
-        min_dist = 0
-        min_dist_thresh = 0.2  # 0.25
+        length = np.random.uniform(0, self.r_max, size=(self.n_agents,))
+        angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
+        x[:, 0] = length * np.cos(angle)
+        x[:, 1] = length * np.sin(angle)
 
-        while min_dist < min_dist_thresh:
-            if self.shape is "circle":
-                length = np.random.uniform(0, self.r_max, size=(self.n_agents,))
-                angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
-                x[:, 0] = length * np.cos(angle)
-                x[:, 1] = length * np.sin(angle)
-            else:
-                # rectangular initialization
-                x = np.random.uniform(-self.r_max, self.r_max, (self.n_agents, 2))
-            x_loc = np.reshape(x, (self.n_agents, 2, 1))
-            a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
-            np.fill_diagonal(a_net, np.Inf)
+        x_loc = np.reshape(x, (self.n_agents, 2, 1))
+        a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
+        np.fill_diagonal(a_net, np.Inf)
 
-            # compute minimum distance between agents and degree of network to check if good initial configuration
-            min_dist = np.sqrt(np.min(a_net))
+        # compute minimum distance between agents and degree of network to check if good initial configuration
+        min_dist = np.sqrt(np.min(a_net))
 
         self.timestep = 0
         self.x = x
@@ -244,7 +237,7 @@ class StationaryEnv(gym.Env):
     #     return stats
 
     def instant_cost(self, ave_dist):  # average time_delay for a piece of information plus comm distance
-        return - np.mean(self.network_buffer[:, :, 0] - self.timestep)   # + ave_dist
+        return - np.mean(self.network_buffer[:, :, 0] - self.timestep) + ave_dist
 
 
     # Will possibly be used at a later date
