@@ -24,7 +24,7 @@ class StationaryEnv(gym.Env):
         super(StationaryEnv, self).__init__()
         # default problem parameters
         self.n_agents = 10  # int(config['network_size'])
-        self.r_max = 5.0  # 10.0  #  float(config['max_rad_init'])
+        self.r_max = 1.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
         # intitialize state matrices
@@ -53,7 +53,6 @@ class StationaryEnv(gym.Env):
 
         self.fig = None
         self.line1 = None
-        self.action_scalar = 10.0
 
         self.carrier_frequency_ghz = 2.4
         self.min_SINR = 2
@@ -64,8 +63,6 @@ class StationaryEnv(gym.Env):
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         self.network_buffer[:, :, 0] = -100  # motivates agents to get information in the first time step
         self.network_buffer[:, :, 1] = -1  # no parent references yet
-
-        self.shape = "circle"  # square or circle, default is square
         self.timestep = 0
 
         self.is_interference = True
@@ -169,9 +166,6 @@ class StationaryEnv(gym.Env):
         x_loc = np.reshape(x, (self.n_agents, 2, 1))
         a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
         np.fill_diagonal(a_net, np.Inf)
-
-        # compute minimum distance between agents and degree of network to check if good initial configuration
-        min_dist = np.sqrt(np.min(a_net))
 
         self.timestep = 0
         self.x = x
