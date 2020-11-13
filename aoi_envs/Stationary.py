@@ -196,6 +196,7 @@ class StationaryEnv(gym.Env):
         """
         Render the environment with agents as points in 2D space
         """
+        # TODO visualize agent 0's buffer tree
         if self.fig is None:
             plt.ion()
             fig = plt.figure()
