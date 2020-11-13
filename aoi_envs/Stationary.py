@@ -196,26 +196,27 @@ class StationaryEnv(gym.Env):
         """
         Render the environment with agents as points in 2D space
         """
-        # TODO visualize agent 0's buffer tree
-        if self.fig is None:
-            plt.ion()
-            fig = plt.figure()
-            self.ax = fig.add_subplot(111)
-            line1, = self.ax.plot(self.x[:, 0], self.x[:, 1], 'bo')  # Returns a tuple of line objects, thus the comma
-            self.ax.plot([0], [0], 'kx')
-            plt.ylim(-1.0 * self.r_max, 1.0 * self.r_max)
-            plt.xlim(-1.0 * self.r_max, 1.0 * self.r_max)
-            a = gca()
-            a.set_xticklabels(a.get_xticks(), font)
-            a.set_yticklabels(a.get_yticks(), font)
-            plt.title('Stationary Agent Positions')
-            self.fig = fig
-            self.line1 = line1
+        if mode == 'human':
+            # TODO visualize agent 0's buffer tree
+            if self.fig is None:
+                plt.ion()
+                fig = plt.figure()
+                self.ax = fig.add_subplot(111)
+                line1, = self.ax.plot(self.x[:, 0], self.x[:, 1], 'bo')  # Returns a tuple of line objects, thus the comma
+                self.ax.plot([0], [0], 'kx')
+                plt.ylim(-1.0 * self.r_max, 1.0 * self.r_max)
+                plt.xlim(-1.0 * self.r_max, 1.0 * self.r_max)
+                a = gca()
+                a.set_xticklabels(a.get_xticks(), font)
+                a.set_yticklabels(a.get_yticks(), font)
+                plt.title('Stationary Agent Positions')
+                self.fig = fig
+                self.line1 = line1
 
-        self.line1.set_xdata(self.x[:, 0])
-        self.line1.set_ydata(self.x[:, 1])
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
+            self.line1.set_xdata(self.x[:, 0])
+            self.line1.set_ydata(self.x[:, 1])
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
 
     def close(self):
         pass

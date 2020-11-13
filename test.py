@@ -1,8 +1,9 @@
 import numpy as np
 from progress.bar import Bar
 import gym
+import time
 import aoi_envs
-import aoi_learner.gnn_policy as GNNPolicy
+import aoi_learner
 from aoi_learner.ppo2 import PPO2
 from stable_baselines.common.vec_env import SubprocVecEnv
 from stable_baselines.common.base_class import BaseRLModel
@@ -34,8 +35,8 @@ def eval_model(env, model, N, render_mode='none'):
                 obs, rewards, done, info = env.step(action)
                 env.render(mode=render_mode)
 
-                # if render_mode == 'human':
-                #     time.sleep(0.1)
+                if render_mode == 'human':
+                    time.sleep(0.1)
 
                 # Record results.
                 results['reward'][k] += rewards
@@ -55,20 +56,20 @@ if __name__ == '__main__':
     model_params, params = BaseRLModel._load_from_file(model_name)
     policy_kwargs = model_params['policy_kwargs']
 
-    new_model = PPO2(
-        policy=GNNPolicy,
+    model = PPO2(
+        policy=aoi_learner.gnn_policy.GNNPolicy,
         n_steps=10,
         policy_kwargs=policy_kwargs,
         env=vec_env)
 
     # update new model's parameters
-    new_model.load_parameters(params)
+    model.load_parameters(params)
 
     print('Model loaded')
-    print('\nPlay 10 games and return scores...')
-    results = eval_model(env, new_model, 100, render_mode='none')
+    print('\nTest over 100 episodes...')
+    results = eval_model(env, model, 100, render_mode='none')
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(np.mean(results['reward']), np.std(results['reward'])))
     print('')
 
-    print('\nPlay games with live visualization...')
-    eval_model(env, new_model, 10, render_mode='human')
+    print('\nTest over 10  episodes live visualization...')
+    eval_model(env, model, 10, render_mode='human')
