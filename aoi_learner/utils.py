@@ -32,7 +32,8 @@ def eval_env(env, model, n_episodes, render_mode='none'):
             ep_reward = 0
             # Run one game.
             while not done:
-                action, state = model.predict(obs, state=state, deterministic=True)
+                action, state = model.predict(obs, state=state, deterministic=False)
+                # print(action)
                 if not issubclass(model, RecurrentActorCriticPolicy):
                     state = None
                 obs, r, done, _ = env.step(action)

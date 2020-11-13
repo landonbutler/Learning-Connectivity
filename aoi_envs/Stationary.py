@@ -23,7 +23,7 @@ class StationaryEnv(gym.Env):
     def __init__(self):
         super(StationaryEnv, self).__init__()
         # default problem parameters
-        self.n_agents = 10  # int(config['network_size'])
+        self.n_agents = 5  # int(config['network_size'])
         self.r_max = 50  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
@@ -180,14 +180,19 @@ class StationaryEnv(gym.Env):
             # compute minimum distance between agents and degree of network to check if good initial configuration
             min_dist = np.sqrt(np.min(a_net))
 
+        self.timestep = 0
         self.x = x
+        self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
+        # self.network_buffer[:, :, 0] = -100  # motivates agents to get information in the first time step
+        self.network_buffer[:, :, 1] = -1  # no parent references yet
 
         # TODO test this
+        # If the agents were mobile, we need to add this code into the step() function too
         self.network_buffer[:, :, 2] = np.where(np.eye(self.n_agents, dtype=np.bool),
                                                 self.x[:, 0].reshape(self.n_agents, 1), self.network_buffer[:, :, 2])
         self.network_buffer[:, :, 3] = np.where(np.eye(self.n_agents, dtype=np.bool),
                                                 self.x[:, 1].reshape(self.n_agents, 1), self.network_buffer[:, :, 3])
-        self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0, self.network_buffer[:, :, 0])
+        self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0, -100)
 
         """
         for i in range(self.n_agents):
@@ -239,7 +244,7 @@ class StationaryEnv(gym.Env):
     #     return stats
 
     def instant_cost(self, ave_dist):  # average time_delay for a piece of information plus comm distance
-        return - np.mean(self.network_buffer[:, :, 0] - self.timestep) + ave_dist
+        return - np.mean(self.network_buffer[:, :, 0] - self.timestep)   # + ave_dist
 
 
     # Will possibly be used at a later date
@@ -267,8 +272,8 @@ class StationaryEnv(gym.Env):
         for i in range(self.n_agents):
             agents_information = self.network_buffer[i, :, :].copy()
             j = transmission_idx[i]
-            transmit_distance += np.linalg.norm(self.x[i, 2:4] - self.x[j, 2:4])
             if i != j:
+                transmit_distance += np.linalg.norm(self.x[i, 2:4] - self.x[j, 2:4])
                 requested_information = self.network_buffer[j, :, :]
                 for k in range(self.n_agents):
                     if requested_information[k, 0] > agents_information[k, 0]:
@@ -282,7 +287,6 @@ class StationaryEnv(gym.Env):
         self.network_buffer[:, :, 0] += np.eye(self.n_agents)
         avg_transmit_distance = transmit_distance / self.n_agents  # TODO divide by number of transmissions per agent
         return avg_transmit_distance
-
 
     @staticmethod
     def unpack_obs(obs, ob_space):

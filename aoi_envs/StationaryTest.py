@@ -46,7 +46,16 @@ class StationaryTest(unittest.TestCase):
     def generate_attempted_communications(self, trans_per_agent, max_trans_pow):
         return self.env.action_space.sample()
 
-    # TODO data_dict_to_networkx wants lists for the receivers and senders, not np arrays
+    def test_run_episode(self):
+        self.env = gym.make('StationaryEnv-v0')
+        observation = self.env.reset()
+        for i in range(50):
+            self.env.is_interference = False
+            action = self.env.action_space.sample()
+            observation, reward, done, info = self.env.step(action)
+            print(observation)
+
+    # # TODO data_dict_to_networkx wants lists for the receivers and senders, not np arrays
     # def test_graph_creation_from_buffer(self):
     #     self.env = gym.make('StationaryEnv-v0')
     #     observation = self.env.reset()
