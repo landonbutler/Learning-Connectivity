@@ -1,84 +1,51 @@
 import unittest
 import numpy as np
-from aoi_envs.Stationary import StationaryEnv
+from Stationary import StationaryEnv
+import imageio
 import unittest
 from graph_nets import utils_np
 import networkx as nx
 import matplotlib.pyplot as plt
 import random
 import gym
+import os
 
 # TODO update tests to work with communication index actions
 
 class StationaryTest(unittest.TestCase):
     def setUp(self):
-        self.env = gym.make('StationaryEnv-v0')
+        self.env = StationaryEnv()
         self.env.reset()
-
-    def test_reset_and_render(self):
-        print("attempting reset")
-        self.env.reset()
-        self.env.render()
-
-    # def test_interference_1(self):
-    #     attempt_comm = self.generate_attempted_communications(1, 15)
-    #     succ_comm = self.env.interference(attempt_comm)
-    #     print(succ_comm)
-    #
-    # def test_interference_k(self):
-    #     attempt_comm = self.generate_attempted_communications(int(self.env.env.n_agents / 2), 15)
-    #     succ_comm = self.env.interference(attempt_comm)
-    #     print(succ_comm)
 
     def test_update_buffers(self):
-        attempt_comm = self.generate_attempted_communications(int(self.env.env.n_agents / 2), 15)
+        # print("sample action")
+        attempt_comm = self.env.action_space.sample()
         # print(attempt_comm)
-        self.env.env.update_buffers(attempt_comm)
-        # print(self.env.env.network_buffer)
 
-    def test_multiple_steps_without_interference(self):
-        for i in range(5):
-            attempt_comm = self.generate_attempted_communications(int(self.env.env.n_agents / 2), 15)
-            self.env.is_interference = False
+        # print("new buffer states")
+        self.env.update_buffers(attempt_comm)
+        # print(self.env.network_buffer)
+
+    def test_multiple_step_buffer_update(self):
+        n = 5
+        for i in range(n):
+            attempt_comm = self.env.action_space.sample()
             observation, reward, done, info = self.env.step(attempt_comm)
-        # print(observation)
+        # print("new buffer states after " + str(n) + " steps")
+        # print(self.env.network_buffer)
 
-    def generate_attempted_communications(self, trans_per_agent, max_trans_pow):
-        return self.env.action_space.sample()
-
-    def test_run_episode(self):
-        self.env = gym.make('StationaryEnv-v0')
-        observation = self.env.reset()
-        done = False
-        ep_reward = 0
-        while not done:
-            self.env.is_interference = False
-            action = self.env.action_space.sample()
-            observation, reward, done, info = self.env.step(action)
-            ep_reward += reward
-            # print(observation)
-        print(ep_reward)
-
-    # # TODO data_dict_to_networkx wants lists for the receivers and senders, not np arrays
-    # def test_graph_creation_from_buffer(self):
-    #     self.env = gym.make('StationaryEnv-v0')
-    #     observation = self.env.reset()
-    #     for i in range(50):
-    #         self.env.is_interference = False
-    #         action = self.env.action_space.sample()
-    #         observation, reward, done, info = self.env.step(action)
-    #         if i == 40:
-    #             print(observation)
-    #
-    #     graphs_nx = utils_np.data_dict_to_networkx(observation)
-    #     ax = plt.figure(figsize=(25, 25)).gca()
-    #     number_of_colors = self.env.env.n_agents
-    #
-    #     color = ["#" + ''.join([random.choice('0123456789ABCDEF') for _ in range(6)]) for _ in range(number_of_colors)]
-    #     nc = [i for i in color for _ in range(number_of_colors)]
-    #     nx.draw_networkx(graphs_nx, ax=ax, node_color=nc, pos=nx.kamada_kawai_layout(graphs_nx))
-    #     _ = ax.set_title("Tree Structures from Buffers")
-    #     plt.savefig('buffer_to_graphs_kk.png')
+    def test_render(self):
+        n = 50
+        for i in range(n):
+            attempt_comm = self.env.action_space.sample()
+            observation, reward, done, info = self.env.step(attempt_comm)
+            self.env.render()
+        with imageio.get_writer('visuals/bufferTrees/randomSelection.gif', mode='I', duration=.3) as writer:
+            for i in range(1,n+1):
+                fileloc = 'visuals/bufferTrees/ts'+str(i)+'.png'
+                image = imageio.imread(fileloc)
+                writer.append_data(image)
+                os.remove(fileloc)
 
 
 if __name__ == '__main__':

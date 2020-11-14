@@ -23,7 +23,7 @@ class StationaryEnv(gym.Env):
     def __init__(self):
         super(StationaryEnv, self).__init__()
         # default problem parameters
-        self.n_agents = 10  # int(config['network_size'])
+        self.n_agents = 25  # int(config['network_size'])
         self.r_max = 1.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
@@ -65,11 +65,12 @@ class StationaryEnv(gym.Env):
         self.network_buffer[:, :, 1] = -1  # no parent references yet
         self.timestep = 0
 
-        self.is_interference = True
+        self.is_interference = False
+        self.first_agents_choice = -1
 
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
-
+        self.save_plots = True
         self.seed()
 
     def params_from_cfg(self, args):
@@ -102,6 +103,7 @@ class StationaryEnv(gym.Env):
         if self.is_interference:
             successful_transmissions  = self.interference(attempted_transmissions) # calculates interference from attempted transmissions
         """
+        self.first_agents_choice = attempted_transmissions[0]
         average_dist = self.update_buffers(successful_transmissions)
         # for successful transmissions, updates the buffers of those receiving information
 
@@ -181,13 +183,6 @@ class StationaryEnv(gym.Env):
                                                 self.x[:, 1].reshape(self.n_agents, 1), self.network_buffer[:, :, 3])
         self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0, -100)
 
-        """
-        for i in range(self.n_agents):
-            self.network_buffer[i,i,2] = self.x[i,0] # an agent's x position is stored in its respective buffer
-            self.network_buffer[i,i,3] = self.x[i,1] # y position
-            self.network_buffer[i,i,0] = 0 # I know my location at timestep 0
-        """
-
         if self.is_interference:
             self.compute_distances()
         return self.get_relative_network_buffer_as_dict()
@@ -197,26 +192,54 @@ class StationaryEnv(gym.Env):
         Render the environment with agents as points in 2D space
         """
         if mode == 'human':
-            # TODO visualize agent 0's buffer tree
-            if self.fig is None:
+            if self.fig == None:
                 plt.ion()
                 fig = plt.figure()
                 self.ax = fig.add_subplot(111)
-                line1, = self.ax.plot(self.x[:, 0], self.x[:, 1], 'bo')  # Returns a tuple of line objects, thus the comma
+                line1, = self.ax.plot(self.x[:1, 0], self.x[:1, 1], 'bo')  # Returns a tuple of line objects, thus the comma
+                self.ax.plot(self.x[0, 0], self.x[0, 1], 'go')
                 self.ax.plot([0], [0], 'kx')
                 plt.ylim(-1.0 * self.r_max, 1.0 * self.r_max)
                 plt.xlim(-1.0 * self.r_max, 1.0 * self.r_max)
                 a = gca()
                 a.set_xticklabels(a.get_xticks(), font)
                 a.set_yticklabels(a.get_yticks(), font)
-                plt.title('Stationary Agent Positions')
-                self.fig = fig
+                plt.title('Stationary Agent\'s Buffer Tree')
                 self.line1 = line1
+                self.line1.set_xdata(self.x[:, 0])
+                self.line1.set_ydata(self.x[:, 1])
+                self.fig = fig
+                self.arrows = []
+            
+            if self.save_plots:
+                for k in self.arrows:
+                    k.remove()
+                self.arrows = []
+                for i in range(self.n_agents):
+                    j = int(self.network_buffer[0,i,1])
+                    if j != -1:
+                        color = "black"
 
-            self.line1.set_xdata(self.x[:, 0])
-            self.line1.set_ydata(self.x[:, 1])
+                        if i == self.first_agents_choice:
+                            color = "red"
+                        ar = plt.arrow(self.x[i,0], self.x[i,1], self.x[j,0]-self.x[i,0], self.x[j,1]-self.x[i,1], 
+                                      length_includes_head=True,width=.000001,head_width=0, head_length=0, color = color)
+                        self.arrows.append(ar)
+                cost = str(round(self.instant_cost(0), 2))
+                if (len(cost) == 3):
+                    cost = cost + "0"
+                elif (len(cost) == 5):
+                    cost = cost[:4]
+                temp_depth = str('TBI')
+                txt = self.ax.text(-.925, -.88, 'Mean AOI : ' + str(cost) + '  |  Mean Depth : ' + temp_depth, fontsize=12,
+                    bbox={'facecolor': 'grey', 'alpha': 0.5, 'pad': 10})
+                self.arrows.append(txt)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
+            if self.save_plots:
+                plt.savefig('visuals/bufferTrees/ts' + str(self.timestep) + '.png')
+
+            
 
     def close(self):
         pass
