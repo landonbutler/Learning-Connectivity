@@ -199,7 +199,7 @@ class StationaryEnv(gym.Env):
                 line1, = self.ax.plot(self.x[:1, 0], self.x[:1, 1], 'bo')  # Returns a tuple of line objects, thus the comma
                 self.ax.plot(self.x[0, 0], self.x[0, 1], 'go')
                 self.ax.plot([0], [0], 'kx')
-                plt.ylim(-1.0 * self.r_max, 1.0 * self.r_max)
+                plt.ylim(-.4 + -1.0 * self.r_max, 1.0 * self.r_max)
                 plt.xlim(-1.0 * self.r_max, 1.0 * self.r_max)
                 a = gca()
                 a.set_xticklabels(a.get_xticks(), font)
@@ -230,8 +230,12 @@ class StationaryEnv(gym.Env):
                     cost = cost + "0"
                 elif (len(cost) == 5):
                     cost = cost[:4]
-                temp_depth = str('TBI')
-                txt = self.ax.text(-.925, -.88, 'Mean AOI : ' + str(cost) + '  |  Mean Depth : ' + temp_depth, fontsize=12,
+                tree_depth = str(self.find_tree_depth(self.network_buffer[0,:,1]))
+                if (len(tree_depth) == 3):
+                    tree_depth = tree_depth + "0"
+                elif (len(tree_depth) == 5):
+                    tree_depth = tree_depth[:4]
+                txt = self.ax.text(0, -1.2, 'Mean AOI : ' + str(cost) + '  |  Mean Depth : ' + tree_depth, fontsize=12, ha='center',
                     bbox={'facecolor': 'grey', 'alpha': 0.5, 'pad': 10})
                 self.arrows.append(txt)
             self.fig.canvas.draw()
@@ -300,6 +304,19 @@ class StationaryEnv(gym.Env):
         avg_transmit_distance = transmit_distance / self.n_agents  # TODO divide by number of transmissions per agent
         return avg_transmit_distance
 
+    def find_tree_depth(self, local_buffer):
+        total_depth = 0
+        for i in range(self.n_agents):
+            total_depth += self.find_depth(0, i, local_buffer)
+        return total_depth / self.n_agents
+    
+    def find_depth(self, cur_count, agent, local_buffer):
+        if agent == -1:
+            return cur_count
+        else:
+            new_agent = int(local_buffer[int(agent)])
+            return self.find_depth(cur_count + 1, new_agent, local_buffer)
+    
     @staticmethod
     def unpack_obs(obs, ob_space):
         assert tf is not None, "Function unpack_obs() is not available if Tensorflow is not imported."

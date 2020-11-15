@@ -40,6 +40,7 @@ class StationaryTest(unittest.TestCase):
             attempt_comm = self.env.action_space.sample()
             observation, reward, done, info = self.env.step(attempt_comm)
             self.env.render()
+        
         with imageio.get_writer('visuals/bufferTrees/randomSelection.gif', mode='I', duration=.3) as writer:
             for i in range(1,n+1):
                 fileloc = 'visuals/bufferTrees/ts'+str(i)+'.png'
@@ -47,6 +48,6 @@ class StationaryTest(unittest.TestCase):
                 writer.append_data(image)
                 os.remove(fileloc)
 
-
+print("StatTest")
 if __name__ == '__main__':
     unittest.main()

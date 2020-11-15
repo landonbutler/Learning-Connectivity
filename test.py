@@ -28,6 +28,7 @@ def eval_model(env, model, N, render_mode='none'):
             done = False
             obs = env.reset()
             state = None
+            timestep = 1
             # Run one game.
             while not done:
                 action, state = model.predict(obs, state=state, deterministic=True)
@@ -40,10 +41,19 @@ def eval_model(env, model, N, render_mode='none'):
 
                 # Record results.
                 results['reward'][k] += rewards
-
+                timestep += 1
+            self.save_gif(k, timestep)
             bar.next()
     return results
 
+    def save_gif(self, model_number, timestep):
+        filename = 'visuals/bufferTrees/controller' + str(model_number) + '.gif'
+        with imageio.get_writer(filename, mode='I', duration=.3) as writer:
+            for i in range(1,timestep+1):
+                fileloc = 'visuals/bufferTrees/ts'+str(i)+'.png'
+                image = imageio.imread(fileloc)
+                writer.append_data(image)
+                os.remove(fileloc)
 
 if __name__ == '__main__':
     env = make_env()
