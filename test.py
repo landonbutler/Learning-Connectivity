@@ -45,6 +45,7 @@ def eval_model(env, model, N, render_mode='none'):
                 results['reward'][k] += rewards
                 timestep += 1
             # save_gif(k, timestep)
+            print(results['reward'][k])
             bar.next()
     return results
 
@@ -62,7 +63,7 @@ if __name__ == '__main__':
     vec_env = SubprocVecEnv([make_env])
 
     # Specify pre-trained model checkpoint file.
-    model_name = 'models/rl_1/ckpt/ckpt_050.pkl'  # ent_coef  = 1e-6
+    model_name = 'models/rl_4/ckpt/ckpt_000.pkl'  # ent_coef  = 1e-6
 
     # load the dictionary of parameters from file
     model_params, params = BaseRLModel._load_from_file(model_name)

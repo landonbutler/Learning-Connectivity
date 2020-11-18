@@ -23,8 +23,8 @@ class StationaryEnv(gym.Env):
     def __init__(self):
         super(StationaryEnv, self).__init__()
         # default problem parameters
-        self.n_agents = 25  # int(config['network_size'])
-        self.r_max = 1.0  # 10.0  #  float(config['max_rad_init'])
+        self.n_agents = 10  # int(config['network_size'])
+        self.r_max = 2.5  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
         # intitialize state matrices
@@ -52,7 +52,16 @@ class StationaryEnv(gym.Env):
         )
 
         self.fig = None
-        self.line1 = None
+        self.agent_markers = None
+        self.np_random = None
+        self.ax = None
+        self.agent0_marker = None
+        self._plot_text = None
+        self.arrows = None
+        self.current_arrow = None
+
+        self.diff = None
+        self.r2 = None
 
         self.carrier_frequency_ghz = 2.4
         self.min_SINR = 2
@@ -61,12 +70,13 @@ class StationaryEnv(gym.Env):
         self.path_loss_exponent = 2
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
-        self.network_buffer[:, :, 0] = -100  # motivates agents to get information in the first time step
+        self.network_buffer[:, :, 0] = -10  # motivates agents to get information in the first time step
         self.network_buffer[:, :, 1] = -1  # no parent references yet
         self.timestep = 0
+        self.avg_transmit_distance = 0.0
 
         self.is_interference = False
-        self.first_agents_choice = -1
+        self.current_agents_choice = -1
 
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
@@ -92,25 +102,31 @@ class StationaryEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    # input will be an n-vector of index of who to communicate with
-    # in the future, we could create a nxn continuous action space of transmit powers,
-    # we would keep the max k transmits
     def step(self, attempted_transmissions):
+        """
+        Apply agent actions to update environment.
+        In the future, we could create a nxn continuous action space of transmit powers, and keep max k transmits.
+        :param attempted_transmissions: n-vector of index of who to communicate with
+        :return: Environment observations as a dict representing the graph.
+        """
         successful_transmissions = attempted_transmissions
 
         # Transmit power can be incorporated later
-        """
-        if self.is_interference:
-            successful_transmissions  = self.interference(attempted_transmissions) # calculates interference from attempted transmissions
-        """
-        self.first_agents_choice = attempted_transmissions[0]
-        average_dist = self.update_buffers(successful_transmissions)
+        # if self.is_interference:
+        #     successful_transmissions  = self.interference(attempted_transmissions) # calculates interference from attempted transmissions
+
+        self.current_agents_choice = attempted_transmissions[0]
+        self.update_buffers(successful_transmissions)
         # for successful transmissions, updates the buffers of those receiving information
 
         self.timestep = self.timestep + 1
-        return self.get_relative_network_buffer_as_dict(), - self.instant_cost(average_dist), False, {}
+        return self.get_relative_network_buffer_as_dict(), - self.instant_cost(), False, {}
 
     def get_relative_network_buffer_as_dict(self):
+        """
+        Compute local node observations.
+        :return: A dict representing the current routing buffers.
+        """
         # timesteps and positions won't be relative within env, but need to be when passed out
         relative_network_buffer = self.network_buffer.copy()
         relative_network_buffer[:, :, 0] = self.network_buffer[:, :, 0] - self.timestep
@@ -122,6 +138,10 @@ class StationaryEnv(gym.Env):
         return self.map_to_observation_space(relative_network_buffer)
 
     def map_to_observation_space(self, network_buffer):
+        """
+        Compute local buffers as a Dict of representing a graph.
+        :return: A dict representing the current routing buffers.
+        """
         n = network_buffer.shape[0]
         n_nodes = n * n
 
@@ -194,62 +214,57 @@ class StationaryEnv(gym.Env):
         if mode == 'human':
             if self.fig == None:
                 plt.ion()
-                fig = plt.figure()
-                self.ax = fig.add_subplot(111)
-                line1, = self.ax.plot(self.x[:1, 0], self.x[:1, 1], 'bo')  # Returns a tuple of line objects, thus the comma
-                self.agent0, = self.ax.plot(self.x[0, 0], self.x[0, 1], 'go')
-                self.ax.plot([0], [0], 'kx')
+                self.fig = plt.figure()
+                self.ax = self.fig.add_subplot(111)
+                self.agent_markers, = self.ax.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
+                self.agent0_marker, = self.ax.plot([], [], 'go')
+
+                # Make extra space for the legend
                 plt.ylim(-.4 + -1.0 * self.r_max, 1.0 * self.r_max)
                 plt.xlim(-1.0 * self.r_max, 1.0 * self.r_max)
+                self._plot_text = plt.text(x=-0.5 * self.r_max, y=-1.0 * self.r_max, s="", fontsize=10)
+
                 a = gca()
                 a.set_xticklabels(a.get_xticks(), font)
                 a.set_yticklabels(a.get_yticks(), font)
                 plt.title('Stationary Agent\'s Buffer Tree')
-                self.line1 = line1
-                self.line1.set_xdata(self.x[:, 0])
-                self.line1.set_ydata(self.x[:, 1])
-                self.fig = fig
                 self.arrows = []
+
+                for i in range(self.n_agents):
+                    temp_line, = self.ax.plot([], [], 'k')
+                    self.arrows.append(temp_line)
+
+                self.current_arrow, = self.ax.plot([], [], 'r')
 
             if self.timestep <= 1:
-                self.line1.set_xdata(self.x[:, 0])
-                self.line1.set_ydata(self.x[:, 1])
-                self.agent0.set_xdata(self.x[0, 0])
-                self.agent0.set_ydata(self.x[0, 1])
-            
-            if self.save_plots:
-                for k in self.arrows:
-                    k.remove()
-                self.arrows = []
-                for i in range(self.n_agents):
-                    j = int(self.network_buffer[0,i,1])
-                    if j != -1:
-                        color = "black"
+                # Plot the agent locations at the start of the episode
+                self.agent_markers.set_xdata(self.x[:, 0])
+                self.agent_markers.set_ydata(self.x[:, 1])
+                self.agent0_marker.set_xdata(self.x[0, 0])
+                self.agent0_marker.set_ydata(self.x[0, 1])
 
-                        if i == self.first_agents_choice:
-                            color = "red"
-                        ar = plt.arrow(self.x[i,0], self.x[i,1], self.x[j,0]-self.x[i,0], self.x[j,1]-self.x[i,1], 
-                                      length_includes_head=True,width=.000001,head_width=0, head_length=0, color = color)
-                        self.arrows.append(ar)
-                cost = str(round(self.instant_cost(0), 2))
-                if (len(cost) == 3):
-                    cost = cost + "0"
-                elif (len(cost) == 5):
-                    cost = cost[:4]
-                tree_depth = str(self.find_tree_depth(self.network_buffer[0,:,1]))
-                if (len(tree_depth) == 3):
-                    tree_depth = tree_depth + "0"
-                elif (len(tree_depth) == 5):
-                    tree_depth = tree_depth[:4]
-                txt = self.ax.text(0, -1.2, 'Mean AOI : ' + str(cost) + '  |  Mean Depth : ' + tree_depth, fontsize=12, ha='center',
-                    bbox={'facecolor': 'grey', 'alpha': 0.5, 'pad': 10})
-                self.arrows.append(txt)
+            for i in range(self.n_agents):
+                j = int(self.network_buffer[0, i, 1])
+                if j != -1:
+                    self.arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
+                    self.arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
+                    if i == self.current_agents_choice:
+                        self.current_arrow.set_xdata([self.x[i, 0], self.x[j, 0]])
+                        self.current_arrow.set_ydata([self.x[i, 1], self.x[j, 1]])
+                else:
+                    self.arrows[i].set_xdata([])
+                    self.arrows[i].set_ydata([])
+
+            cost = self.compute_current_aoi()
+            tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
+            plot_str = 'Mean AoI: {0:2.2f} | Mean Depth: {1:2.2f} | Mean TX Dist: {2:2.2f}'.format(cost, tree_depth,
+                                                                           self.avg_transmit_distance)
+            self._plot_text.set_text(plot_str)
+
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             if self.save_plots:
                 plt.savefig('visuals/bufferTrees/ts' + str(self.timestep) + '.png')
-
-            
 
     def close(self):
         pass
@@ -260,42 +275,39 @@ class StationaryEnv(gym.Env):
                                                                                     self.diff[:, :, 1])
         np.fill_diagonal(self.r2, np.Inf)
 
-    # def get_stats(self):
-    #     stats = {}
-    #     stats['average_time_delay'] = self.instant_cost()
-    #     return stats
+    def compute_current_aoi(self):
+        return - np.mean(self.network_buffer[:, :, 0] - self.timestep)
 
-    def instant_cost(self, ave_dist):  # average time_delay for a piece of information plus comm distance
-        return - np.mean(self.network_buffer[:, :, 0] - self.timestep) + ave_dist
-
+    def instant_cost(self):  # average time_delay for a piece of information plus comm distance
+        return self.compute_current_aoi() * 0.1 + self.avg_transmit_distance * 0.1
 
     # Will possibly be used at a later date
     # def interference(self, attempted_transmissions):
-        # network_transmission_power is an adjacency matrix, containing the power of each attempted
-        # transmissions in dBm
-        # power_mW = 10**(attempted_transmissions / 10)
-        # free_space_path_loss = 10*self.path_loss_exponent*np.log10(np.sqrt(self.r2)) + 20*np.log10(self.carrier_frequency_ghz*10**9)-147.55 #dB
-        # channel_gain = np.power(.1,(free_space_path_loss)/10) # this is now a unitless ratio
-        # numerator = np.multiply(power_mW, channel_gain) # this is in mW, numerator of the SINR
-        # interference_sum = np.sum(numerator,axis=1)
-        # denominator = self.gaussian_noise_mW + np.expand_dims(interference_sum, axis=1) - numerator
-        # np.seterr(divide = 'ignore')
-        # SINR = 10*np.log10(np.divide(numerator,denominator))
-        # np.seterr(divide = 'warn')
-        # successful_tranmissions = np.zeros((self.n_agents,self.n_agents))
-        # successful_tranmissions[SINR >= self.min_SINR] = 1
-        # return np.multiply(successful_tranmissions, attempted_transmissions)
+    # network_transmission_power is an adjacency matrix, containing the power of each attempted
+    # transmissions in dBm
+    # power_mW = 10**(attempted_transmissions / 10)
+    # free_space_path_loss = 10*self.path_loss_exponent*np.log10(np.sqrt(self.r2)) + 20*np.log10(self.carrier_frequency_ghz*10**9)-147.55 #dB
+    # channel_gain = np.power(.1,(free_space_path_loss)/10) # this is now a unitless ratio
+    # numerator = np.multiply(power_mW, channel_gain) # this is in mW, numerator of the SINR
+    # interference_sum = np.sum(numerator,axis=1)
+    # denominator = self.gaussian_noise_mW + np.expand_dims(interference_sum, axis=1) - numerator
+    # np.seterr(divide = 'ignore')
+    # SINR = 10*np.log10(np.divide(numerator,denominator))
+    # np.seterr(divide = 'warn')
+    # successful_tranmissions = np.zeros((self.n_agents,self.n_agents))
+    # successful_tranmissions[SINR >= self.min_SINR] = 1
+    # return np.multiply(successful_tranmissions, attempted_transmissions)
 
     def update_buffers(self, transmission_idx):
         # TODO : Convert this to NumPy vector operations
-        transmit_distance = 0
+        transmit_distance = []
 
         new_network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         for i in range(self.n_agents):
             agents_information = self.network_buffer[i, :, :].copy()
             j = transmission_idx[i]
             if i != j:
-                transmit_distance += np.linalg.norm(self.x[i, 2:4] - self.x[j, 2:4])
+                transmit_distance.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
                 requested_information = self.network_buffer[j, :, :]
                 for k in range(self.n_agents):
                     if requested_information[k, 0] > agents_information[k, 0]:
@@ -307,22 +319,22 @@ class StationaryEnv(gym.Env):
 
         # my information is updated
         self.network_buffer[:, :, 0] += np.eye(self.n_agents)
-        avg_transmit_distance = transmit_distance / self.n_agents  # TODO divide by number of transmissions per agent
-        return avg_transmit_distance
+        self.avg_transmit_distance = np.sum(np.power(transmit_distance, 2)) / self.n_agents
+        # TODO divide by number of transmissions per agent
 
     def find_tree_depth(self, local_buffer):
         total_depth = 0
         for i in range(self.n_agents):
             total_depth += self.find_depth(0, i, local_buffer)
         return total_depth / self.n_agents
-    
+
     def find_depth(self, cur_count, agent, local_buffer):
         if agent == -1:
             return cur_count
         else:
             new_agent = int(local_buffer[int(agent)])
             return self.find_depth(cur_count + 1, new_agent, local_buffer)
-    
+
     @staticmethod
     def unpack_obs(obs, ob_space):
         assert tf is not None, "Function unpack_obs() is not available if Tensorflow is not imported."
@@ -336,7 +348,7 @@ class StationaryEnv(gym.Env):
         sizes = [np.prod(s) for s in shapes]
         tensors = tf.split(obs, sizes, axis=1)
         tensors = [tf.reshape(t, (-1,) + s) for (t, s) in zip(tensors, shapes)]
-        nodes, edges, senders, receivers, globals = tensors
+        nodes, edges, senders, receivers, globs = tensors
 
         batch_size = tf.shape(nodes)[0]
         nodes = tf.reshape(nodes, (-1, N_NODE_FEAT))
@@ -361,7 +373,7 @@ class StationaryEnv(gym.Env):
         senders = tf.boolean_mask(senders, mask)
         receivers = tf.boolean_mask(receivers, mask)
 
-        globals = tf.reshape(globals, (batch_size, 1))
+        globs = tf.reshape(globs, (batch_size, 1))
 
         # cast all indices to int
         n_node = tf.cast(n_node, tf.int32)
@@ -369,5 +381,4 @@ class StationaryEnv(gym.Env):
         senders = tf.cast(senders, tf.int32)
         receivers = tf.cast(receivers, tf.int32)
 
-        return batch_size, n_node, nodes, n_edge, edges, senders, receivers, globals
-
+        return batch_size, n_node, nodes, n_edge, edges, senders, receivers, globs
