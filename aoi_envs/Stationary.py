@@ -70,11 +70,12 @@ class StationaryEnv(gym.Env):
         self.path_loss_exponent = 2
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
-        self.network_buffer[:, :, 0] = -10  # motivates agents to get information in the first time step
+        self.network_buffer[:, :, 0] = -100  # motivates agents to get information in the first time step
         self.network_buffer[:, :, 1] = -1  # no parent references yet
         self.timestep = 0
         self.avg_transmit_distance = 0.0
 
+        self.symmetric_comms = True
         self.is_interference = False
         self.current_agents_choice = -1
 
@@ -279,7 +280,7 @@ class StationaryEnv(gym.Env):
         return - np.mean(self.network_buffer[:, :, 0] - self.timestep)
 
     def instant_cost(self):  # average time_delay for a piece of information plus comm distance
-        return self.compute_current_aoi() * 0.1 + self.avg_transmit_distance * 0.1
+        return self.compute_current_aoi() + self.avg_transmit_distance * 0.05
 
     # Will possibly be used at a later date
     # def interference(self, attempted_transmissions):
@@ -301,25 +302,28 @@ class StationaryEnv(gym.Env):
     def update_buffers(self, transmission_idx):
         # TODO : Convert this to NumPy vector operations
         transmit_distance = []
-
-        new_network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
+        # new_network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         for i in range(self.n_agents):
-            agents_information = self.network_buffer[i, :, :].copy()
+            # agents_information = self.network_buffer[i, :, :].copy()
             j = transmission_idx[i]
             if i != j:
                 transmit_distance.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
-                requested_information = self.network_buffer[j, :, :]
+                # requested_information = self.network_buffer[j, :, :]
                 for k in range(self.n_agents):
-                    if requested_information[k, 0] > agents_information[k, 0]:
-                        agents_information[k, :] = requested_information[k, :]
-                agents_information[j, 1] = i
+                    if self.network_buffer[j, k, 0] >= self.network_buffer[i, k, 0]:
+                        self.network_buffer[i, k, :] = self.network_buffer[j, k, :]
+                    elif self.symmetric_comms and self.network_buffer[j, k, 0] < self.network_buffer[i, k, 0]:
+                        self.network_buffer[j, k, :] = self.network_buffer[i, k, :]
+                self.network_buffer[i, j, 1] = i
+                if self.symmetric_comms:
+                    self.network_buffer[j, i, 1] = j
                 # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
-            new_network_buffer[i, :, :] = agents_information
-        self.network_buffer = new_network_buffer
+            # new_network_buffer[i, :, :] = agents_information
+        # self.network_buffer = new_network_buffer
 
         # my information is updated
         self.network_buffer[:, :, 0] += np.eye(self.n_agents)
-        self.avg_transmit_distance = np.sum(np.power(transmit_distance, 2)) / self.n_agents
+        self.avg_transmit_distance = np.sum(np.power(transmit_distance, 3)) / self.n_agents
         # TODO divide by number of transmissions per agent
 
     def find_tree_depth(self, local_buffer):

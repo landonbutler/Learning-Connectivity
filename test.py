@@ -33,7 +33,10 @@ def eval_model(env, model, N, render_mode='none'):
             timestep = 1
             # Run one game.
             while not done:
-                action, state = model.predict(obs, state=state, deterministic=True)
+                if model is None:
+                    action = env.action_space.sample()
+                else:
+                    action, state = model.predict(obs, state=state, deterministic=True)
                 state = None
                 obs, rewards, done, info = env.step(action)
                 env.render(mode=render_mode)
@@ -45,7 +48,7 @@ def eval_model(env, model, N, render_mode='none'):
                 results['reward'][k] += rewards
                 timestep += 1
             # save_gif(k, timestep)
-            print(results['reward'][k])
+            # print(results['reward'][k])
             bar.next()
     return results
 
@@ -77,6 +80,7 @@ if __name__ == '__main__':
 
     # update new model's parameters
     model.load_parameters(params)
+    # model = None
 
     # print('Model loaded')
     # print('\nTest over 100 episodes...')
