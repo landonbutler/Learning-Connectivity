@@ -197,7 +197,7 @@ class StationaryEnv(gym.Env):
                 fig = plt.figure()
                 self.ax = fig.add_subplot(111)
                 line1, = self.ax.plot(self.x[:1, 0], self.x[:1, 1], 'bo')  # Returns a tuple of line objects, thus the comma
-                self.ax.plot(self.x[0, 0], self.x[0, 1], 'go')
+                self.agent0, = self.ax.plot(self.x[0, 0], self.x[0, 1], 'go')
                 self.ax.plot([0], [0], 'kx')
                 plt.ylim(-.4 + -1.0 * self.r_max, 1.0 * self.r_max)
                 plt.xlim(-1.0 * self.r_max, 1.0 * self.r_max)
@@ -210,6 +210,12 @@ class StationaryEnv(gym.Env):
                 self.line1.set_ydata(self.x[:, 1])
                 self.fig = fig
                 self.arrows = []
+
+            if self.timestep <= 1:
+                self.line1.set_xdata(self.x[:, 0])
+                self.line1.set_ydata(self.x[:, 1])
+                self.agent0.set_xdata(self.x[0, 0])
+                self.agent0.set_ydata(self.x[0, 1])
             
             if self.save_plots:
                 for k in self.arrows:
