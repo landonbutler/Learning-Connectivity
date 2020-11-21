@@ -33,7 +33,7 @@ class StationaryTest(unittest.TestCase):
             observation, reward, done, info = self.env.step(attempt_comm)
         # print("new buffer states after " + str(n) + " steps")
         # print(self.env.network_buffer)
-
+    """
     def test_render(self):
         n = 50
         for i in range(n):
@@ -47,7 +47,21 @@ class StationaryTest(unittest.TestCase):
                 image = imageio.imread(fileloc)
                 writer.append_data(image)
                 os.remove(fileloc)
+    """
 
-print("StatTest")
+    def test_greedy(self):
+        n = 50
+        for i in range(n):
+            attempt_comm = self.env.greedy_controller()
+            observation, reward, done, info = self.env.step(attempt_comm)
+            self.env.render()
+        
+        with imageio.get_writer('visuals/bufferTrees/interference.gif', mode='I', duration=.3) as writer:
+            for i in range(1,n+1):
+                fileloc = 'visuals/bufferTrees/ts'+str(i)+'.png'
+                image = imageio.imread(fileloc)
+                writer.append_data(image)
+                os.remove(fileloc)
+
 if __name__ == '__main__':
     unittest.main()
