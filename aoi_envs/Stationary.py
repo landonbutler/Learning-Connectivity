@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import gca
 from graph_nets import utils_np
 import tensorflow as tf
+import networkx as nx
 
 font = {'family': 'sans-serif',
         'weight': 'bold',
@@ -25,7 +26,7 @@ class StationaryEnv(gym.Env):
     def __init__(self):
         super(StationaryEnv, self).__init__()
         # default problem parameters
-        self.n_agents = 200  # int(config['network_size'])
+        self.n_agents = 10  # int(config['network_size'])
         self.r_max = 2.5  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
@@ -81,6 +82,7 @@ class StationaryEnv(gym.Env):
         self.symmetric_comms = True
         self.is_interference = True
         self.current_agents_choice = -1
+        self.mst_action = None
 
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
@@ -193,6 +195,8 @@ class StationaryEnv(gym.Env):
         x_loc = np.reshape(x, (self.n_agents, 2, 1))
         a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
         np.fill_diagonal(a_net, np.Inf)
+
+        self.mst_action = None
 
         self.timestep = 0
         if load_positions:
@@ -338,6 +342,35 @@ class StationaryEnv(gym.Env):
             my_buffer_ts = self.network_buffer[i,:,0]
             comm_choice[i] = np.random.choice(np.flatnonzero(my_buffer_ts == my_buffer_ts.min()))
         return comm_choice.astype(int)
+
+    # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
+    def mst_controller(self):
+        if self.mst_action is None:
+
+            self.compute_distances()
+            self.dist = np.sqrt(self.r2)
+            G = nx.from_numpy_array(self.dist, create_using=nx.Graph())
+            T = nx.minimum_spanning_tree(G)
+            degrees = [val for (node, val) in T.degree()]
+
+            parent_refs = np.array(self.find_parents(T, [-1] * self.n_agents, degrees))
+            self.mst_action = parent_refs.astype(int)
+        return self.mst_action
+
+
+    def find_parents(self, T, parent_ref, degrees):
+        leaves = [i for i in range(self.n_agents) if degrees[i] == 1 ]
+        assert len(leaves) != 0, "graph is not a tree"
+        for j in leaves:
+            parent = list(T.edges(j))[0][1]
+            parent_ref[j] = parent
+            T.remove_edge(j, parent)
+            degrees[j] = 0
+            degrees[parent] -= 1
+            if (len(T.edges()) == 0):
+                return parent_ref
+        return self.find_parents(T, parent_ref, degrees) 
+
 
     def update_buffers(self, transmission_idx):
         # TODO : Convert this to NumPy vector operations

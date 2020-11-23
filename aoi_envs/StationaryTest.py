@@ -52,7 +52,7 @@ class StationaryTest(unittest.TestCase):
     def test_greedy(self):
         n = 50
         for i in range(n):
-            attempt_comm = self.env.greedy_controller()
+            attempt_comm = self.env.mst_controller()
             observation, reward, done, info = self.env.step(attempt_comm)
             self.env.render()
         
