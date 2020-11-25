@@ -26,7 +26,7 @@ class StationaryEnv(gym.Env):
     def __init__(self):
         super(StationaryEnv, self).__init__()
         # default problem parameters
-        self.n_agents = 10  # int(config['network_size'])
+        self.n_agents = 200  # int(config['network_size'])
         self.r_max = 2.5  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
@@ -84,6 +84,9 @@ class StationaryEnv(gym.Env):
         self.current_agents_choice = -1
         self.mst_action = None
 
+        self.attempted_transmissions = None
+        self.successful_transmissions = None
+
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
         self.save_plots = True
@@ -116,11 +119,12 @@ class StationaryEnv(gym.Env):
         :param attempted_transmissions: n-vector of index of who to communicate with
         :return: Environment observations as a dict representing the graph.
         """
+        self.attempted_transmissions = attempted_transmissions
         successful_transmissions = attempted_transmissions
-
         # Transmit power can be incorporated later
         if self.is_interference:
              successful_transmissions  = self.interference(attempted_transmissions) # calculates interference from attempted transmissions
+        self.successful_transmissions = successful_transmissions
 
         self.current_agents_choice = attempted_transmissions[0]
         self.update_buffers(successful_transmissions)
@@ -239,11 +243,10 @@ class StationaryEnv(gym.Env):
                 plt.xlim(-1.0 * self.r_max, 1.0 * self.r_max)
                 self._plot_text = plt.text(x=0, y=-1.2 * self.r_max, s="", fontsize=9, ha='center',
                                            bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 6})
-                # -0.5 * self.r_max
                 a = gca()
                 a.set_xticklabels(a.get_xticks(), font)
                 a.set_yticklabels(a.get_yticks(), font)
-                plt.title('Stationary Agent\'s Buffer Tree w/ Greedy Control Policy')
+                plt.title('Stationary Agent\'s Buffer Tree w/ MST Control Policy')
                 self.arrows = []
 
                 for i in range(self.n_agents):
@@ -280,7 +283,93 @@ class StationaryEnv(gym.Env):
             self.fig.canvas.flush_events()
             if self.save_plots:
                 plt.savefig('visuals/bufferTrees/ts' + str(self.timestep) + '.png')
+    
+    def render_interference(self, mode='human'):
+        """
+        Render the interference of the environment with agents as points in 2D space
+        """
+        if mode == 'human':
+            if self.fig == None:
+                plt.ion()
+                self.fig = plt.figure()
+                self.ax = self.fig.add_subplot(111)
+                self.agent_markers, = self.ax.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
+                self.agent0_marker, = self.ax.plot([], [], 'go')
 
+                # Make extra space for the legend
+                plt.ylim(-.8 + -1.0 * self.r_max, 1.0 * self.r_max)
+                plt.xlim(-1.0 * self.r_max, 1.0 * self.r_max)
+                self._plot_text = plt.text(x=0, y=-1.2 * self.r_max, s="", fontsize=9, ha='center',
+                                           bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad':4})
+                a = gca()
+                a.set_xticklabels(a.get_xticks(), font)
+                a.set_yticklabels(a.get_yticks(), font)
+                plt.title('Interference between Stationary Agents w/ MST Control Policy')
+                self.arrows = []
+                self.failed_arrows = []
+
+                for i in range(self.n_agents):
+                    temp_line, = self.ax.plot([], [], 'k') # black
+                    self.arrows.append(temp_line)
+                    temp_failed_arrow, = self.ax.plot([], [], 'r') # red
+                    self.failed_arrows.append(temp_failed_arrow)
+
+            if self.timestep <= 1:
+                # Plot the agent locations at the start of the episode
+                self.agent_markers.set_xdata(self.x[:, 0])
+                self.agent_markers.set_ydata(self.x[:, 1])
+                self.agent0_marker.set_xdata(self.x[0, 0])
+                self.agent0_marker.set_ydata(self.x[0, 1])
+
+            count_succ_comm = 0
+            count_att_comm = 0
+            for i in range(self.n_agents):
+                if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
+                    # agent chose to attempt transmission
+                    count_att_comm += 1
+                    
+                    # agent chooses to communicate with j
+                    j = self.attempted_transmissions[i]
+                    k = self.successful_transmissions[i]
+
+                    if j == self.successful_transmissions[i]:
+                        # communication linkage is successful - black
+                        count_succ_comm += 1
+
+                        self.arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
+                        self.arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
+                        self.failed_arrows[i].set_xdata([])
+                        self.failed_arrows[i].set_ydata([])
+                    else:
+                        # communication linkage is unsuccessful - red
+                        self.failed_arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
+                        self.failed_arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
+                        self.arrows[i].set_xdata([])
+                        self.arrows[i].set_ydata([])
+                else:
+                    # agent chose to not attempt transmission
+                    self.arrows[i].set_xdata([])
+                    self.arrows[i].set_ydata([])
+                    self.failed_arrows[i].set_xdata([])
+                    self.failed_arrows[i].set_ydata([])
+
+            cost = self.compute_current_aoi()
+            tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
+            communication_percent = round((count_succ_comm / self.n_agents) * 100, 1)
+            if count_att_comm > 0:
+                succ_communication_percent = round((count_succ_comm / count_att_comm) * 100, 1)
+            else:
+                succ_communication_percent = 0.0
+            
+            plot_str = 'Mean AoI: {0:2.2f} | Mean TX Dist: {1:2.2f} | Comm %: {2} | Suc Comm %: {3}'.format(cost,
+                                                                           self.avg_transmit_distance, communication_percent,
+                                                                           succ_communication_percent)
+            self._plot_text.set_text(plot_str)
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
+            if self.save_plots:
+                plt.savefig('visuals/interference/ts' + str(self.timestep) + '.png')
+    
     def close(self):
         pass
 
@@ -294,7 +383,10 @@ class StationaryEnv(gym.Env):
         return - np.mean(self.network_buffer[:, :, 0] - self.timestep)
 
     def instant_cost(self):  # average time_delay for a piece of information plus comm distance
-        return self.compute_current_aoi() + self.avg_transmit_distance * 0.05
+        if self.is_interference:
+            return self.compute_current_aoi()
+        else:
+            return self.compute_current_aoi() + self.avg_transmit_distance * 0.05
 
     def interference(self, attempted_transmissions):
         # network_transmission_power is a list of who an agent chooses to communicate with
@@ -329,10 +421,14 @@ class StationaryEnv(gym.Env):
         # -1's indicate unsuccessful communications
         find_who_tx = np.vstack([np.zeros(self.n_agents), successful_tranmissions])
         transmission_idx = (np.argmax(find_who_tx, axis = 0) - 1).astype(int)
-        self.communication_percent = round((((transmission_idx >= 0).sum()) / self.n_agents) * 100, 1)
 
         # remove -1's and replace with respective agent's index (similar to self-communication)
         # this is necessary to be compatible with update_buffer since our action space is {0,...,n-1} (doesn't include -1)
+        will_communicate = np.where(transmission_idx != -1, transmission_idx, np.arange(self.n_agents)) 
+
+        num_communicating = np.count_nonzero(attempted_transmissions - np.arange(self.n_agents))
+        num_succ_communicating = np.count_nonzero(will_communicate - np.arange(self.n_agents))
+
         return np.where(transmission_idx != -1, transmission_idx, np.arange(self.n_agents)) 
 
     # Given current buffer states, will pick agent with oldest AoI to communicate with
