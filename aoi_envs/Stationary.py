@@ -26,7 +26,7 @@ class StationaryEnv(gym.Env):
     def __init__(self):
         super(StationaryEnv, self).__init__()
         # default problem parameters
-        self.n_agents = 200  # int(config['network_size'])
+        self.n_agents = 20  # int(config['network_size'])
         self.r_max = 2.5  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
@@ -71,21 +71,28 @@ class StationaryEnv(gym.Env):
         self.gaussian_noise_dBm = -90
         self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
         self.path_loss_exponent = 2
-        self.tx_power = 30 # in dBm
+        self.tx_power = 10 # in dBm
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         self.network_buffer[:, :, 0] = -100  # motivates agents to get information in the first time step
         self.network_buffer[:, :, 1] = -1  # no parent references yet
         self.timestep = 0
-        self.avg_transmit_distance = 0.0
+        self.avg_transmit_distance = 0.1
 
         self.symmetric_comms = True
         self.is_interference = True
         self.current_agents_choice = -1
         self.mst_action = None
 
+        self.transmission_probability = 1 # Probability an agent will transmit at a given timestep [0,1]
+
+        # Push Model - At each timestep, agent selects which agent they want to 'push' their buffer to
+        # Two-Way Model - An agent requests/pushes their buffer to an agent, with hopes of getting their information back
+        self.comm_model = "push" # push or tw 
+
         self.attempted_transmissions = None
         self.successful_transmissions = None
+
 
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
@@ -123,11 +130,15 @@ class StationaryEnv(gym.Env):
         successful_transmissions = attempted_transmissions
         # Transmit power can be incorporated later
         if self.is_interference:
-             successful_transmissions  = self.interference(attempted_transmissions) # calculates interference from attempted transmissions
+             successful_transmissions, resp_trans  = self.interference(attempted_transmissions) # calculates interference from attempted transmissions
         self.successful_transmissions = successful_transmissions
 
         self.current_agents_choice = attempted_transmissions[0]
-        self.update_buffers(successful_transmissions)
+
+        if self.comm_model is "tw":
+            self.update_buffers(successful_transmissions, resp_trans)
+        else:
+            self.update_buffers(successful_transmissions)
         # for successful transmissions, updates the buffers of those receiving information
 
         self.timestep = self.timestep + 1
@@ -246,7 +257,7 @@ class StationaryEnv(gym.Env):
                 a = gca()
                 a.set_xticklabels(a.get_xticks(), font)
                 a.set_yticklabels(a.get_yticks(), font)
-                plt.title('Stationary Agent\'s Buffer Tree w/ MST Control Policy')
+                plt.title('Stationary Agent\'s Buffer Tree w/ MST  Control Policy')
                 self.arrows = []
 
                 for i in range(self.n_agents):
@@ -284,7 +295,7 @@ class StationaryEnv(gym.Env):
             if self.save_plots:
                 plt.savefig('visuals/bufferTrees/ts' + str(self.timestep) + '.png')
     
-    def render_interference(self, mode='human'):
+    def render_interference(self, mode='human', controller = "Random", filepath = 'visuals/interference/'):
         """
         Render the interference of the environment with agents as points in 2D space
         """
@@ -297,21 +308,24 @@ class StationaryEnv(gym.Env):
                 self.agent0_marker, = self.ax.plot([], [], 'go')
 
                 # Make extra space for the legend
-                plt.ylim(-.8 + -1.0 * self.r_max, 1.0 * self.r_max)
-                plt.xlim(-1.0 * self.r_max, 1.0 * self.r_max)
-                self._plot_text = plt.text(x=0, y=-1.2 * self.r_max, s="", fontsize=9, ha='center',
+                plt.axis('equal')
+                plt.ylim(-.6 + -1.0 * self.r_max, .6 + 1.0 * self.r_max)
+                plt.xlim(-.6 + -1.0 * self.r_max, .6 + 1.0 * self.r_max)
+                self._plot_text = plt.text(x=0, y=-.85 * self.r_max, s="", fontsize=9, ha='center',
                                            bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad':4})
                 a = gca()
                 a.set_xticklabels(a.get_xticks(), font)
                 a.set_yticklabels(a.get_yticks(), font)
-                plt.title('Interference between Stationary Agents w/ MST Control Policy')
+                plt.title('Interference between Stationary Agents w/ ' + controller + ' Control Policy')
                 self.arrows = []
                 self.failed_arrows = []
-
+                #plt.axis('equal')
                 for i in range(self.n_agents):
-                    temp_line, = self.ax.plot([], [], 'k') # black
+                    temp_line = self.ax.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width = .03, minshaft = .001, minlength=0)
+                    # temp_line, = self.ax.plot([], [], 'k') # black
                     self.arrows.append(temp_line)
-                    temp_failed_arrow, = self.ax.plot([], [], 'r') # red
+                    # temp_failed_arrow, = self.ax.plot([], [], 'r') # red
+                    temp_failed_arrow = self.ax.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1, units='xy', width = .03, minshaft = .001, minlength=0)
                     self.failed_arrows.append(temp_failed_arrow)
 
             if self.timestep <= 1:
@@ -335,23 +349,28 @@ class StationaryEnv(gym.Env):
                     if j == self.successful_transmissions[i]:
                         # communication linkage is successful - black
                         count_succ_comm += 1
-
-                        self.arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
-                        self.arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
-                        self.failed_arrows[i].set_xdata([])
-                        self.failed_arrows[i].set_ydata([])
+                        self.arrows[i].set_UVC(self.x[j, 0]-self.x[i, 0], self.x[j, 1]-self.x[i, 1])
+                        # self.arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
+                        # self.arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
+                        self.failed_arrows[i].set_UVC(0,0)
+                        # self.failed_arrows[i].set_xdata([])
+                        # self.failed_arrows[i].set_ydata([])
                     else:
                         # communication linkage is unsuccessful - red
-                        self.failed_arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
-                        self.failed_arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
-                        self.arrows[i].set_xdata([])
-                        self.arrows[i].set_ydata([])
+                        # self.failed_arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
+                        # self.failed_arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
+                        self.arrows[i].set_UVC(0, 0)
+                        self.failed_arrows[i].set_UVC(self.x[j, 0]-self.x[i, 0], self.x[j, 1]-self.x[i, 1])
+                        # self.arrows[i].set_xdata([])
+                        # self.arrows[i].set_ydata([])
                 else:
                     # agent chose to not attempt transmission
-                    self.arrows[i].set_xdata([])
-                    self.arrows[i].set_ydata([])
-                    self.failed_arrows[i].set_xdata([])
-                    self.failed_arrows[i].set_ydata([])
+                    self.arrows[i].set_UVC(0, 0)
+                    # self.arrows[i].set_xdata([])
+                    # self.arrows[i].set_ydata([])
+                    # self.failed_arrows[i].set_xdata([])
+                    # self.failed_arrows[i].set_ydata([])
+                    self.failed_arrows[i].set_UVC(0,0)
 
             cost = self.compute_current_aoi()
             tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
@@ -368,7 +387,7 @@ class StationaryEnv(gym.Env):
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             if self.save_plots:
-                plt.savefig('visuals/interference/ts' + str(self.timestep) + '.png')
+                plt.savefig(filepath + 'ts' + str(self.timestep) + '.png')
     
     def close(self):
         pass
@@ -389,26 +408,55 @@ class StationaryEnv(gym.Env):
             return self.compute_current_aoi() + self.avg_transmit_distance * 0.05
 
     def interference(self, attempted_transmissions):
-        # network_transmission_power is a list of who an agent chooses to communicate with
 
-        # converted attempted transmissions list to an adjacency matrix
+        # converts attempted transmissions list to an adjacency matrix
         # 0's - no communication, tx_power on indices that are communicating
-        trans_adj_mat = np.zeros((self.n_agents, self.n_agents))
+        # rows are transmitting agent, columns are receiver agents
+        trans_adj_mat = np.zeros((self.n_agents, self.n_agents)) + np.NINF
         indices = np.arange(self.n_agents)
-        trans_adj_mat[attempted_transmissions,indices] = self.tx_power
-        np.fill_diagonal(trans_adj_mat, 0)
+        trans_adj_mat[indices,attempted_transmissions] = self.tx_power
+        np.fill_diagonal(trans_adj_mat, np.NINF)
+        if self.comm_model is "tw":
+            resp_adj_mat = np.transpose(trans_adj_mat)
 
+        successful_tranmissions = self.calculate_SINR(trans_adj_mat)
+
+        # from the adj mat, find the indices of those who succesfully communicated
+        # -1's indicate unsuccessful communications
+        # TODO : Change this logic for when agents can communicate with multiple
+        find_who_tx = np.c_[np.zeros(self.n_agents), successful_tranmissions]
+        transmission_idx = (np.argmax(find_who_tx, axis = 1) - 1).astype(int)
+
+        # remove -1's and replace with respective agent's index (similar to self-communication)
+        # this is necessary to be compatible with update_buffer since our action space is {0,...,n-1} (doesn't include -1)
+        successful_tranmissions = np.where(transmission_idx != -1, transmission_idx, np.arange(self.n_agents))
+        if self.comm_model is "push":
+            return successful_tranmissions, None
+        else:
+            successful_reponses = self.calculate_SINR(resp_adj_mat)
+
+            # successful_reponses is an adj matrix of succsessful responses
+            # we need to convert this to a python list of np arrays 
+            resp_idx = []
+            for i in range(self.n_agents):
+                resp_idx_i = np.nonzero(successful_reponses[i,:])
+                resp_idx.append(resp_idx_i)
+            
+            return successful_tranmissions, resp_idx
+
+    def calculate_SINR(self, trans_adj_mat):
+        np.seterr('ignore')
         # Calculate SINR for each possible transmission
         self.compute_distances()
         power_mW = 10**(trans_adj_mat / 10)
         free_space_path_loss = 10*self.path_loss_exponent*np.log10(np.sqrt(self.r2)) + 20*np.log10(self.carrier_frequency_ghz*10**9)-147.55 #dB
         channel_gain = np.power(.1,(free_space_path_loss)/10) # this is now a unitless ratio
         numerator = np.multiply(power_mW, channel_gain) # this is in mW, numerator of the SINR
-        interference_sum = np.sum(numerator,axis=1)
-        denominator = self.gaussian_noise_mW + np.expand_dims(interference_sum, axis=1) - numerator
-        np.seterr(divide = 'ignore')
+        interference_sum = np.sum(numerator,axis=0)
+        denominator = self.gaussian_noise_mW + np.expand_dims(interference_sum, axis=0) - numerator
+        
         SINR = 10*np.log10(np.divide(numerator,denominator))
-        np.seterr(divide = 'warn')
+        
 
         # find channels where transmission would be possible
         past_thresh = np.zeros((self.n_agents,self.n_agents))
@@ -416,20 +464,9 @@ class StationaryEnv(gym.Env):
 
         # only keep those that did try to communicate
         successful_tranmissions = np.multiply(past_thresh, trans_adj_mat)
-        
-        # from the adj mat, find the indices of those who succesfully communicated
-        # -1's indicate unsuccessful communications
-        find_who_tx = np.vstack([np.zeros(self.n_agents), successful_tranmissions])
-        transmission_idx = (np.argmax(find_who_tx, axis = 0) - 1).astype(int)
-
-        # remove -1's and replace with respective agent's index (similar to self-communication)
-        # this is necessary to be compatible with update_buffer since our action space is {0,...,n-1} (doesn't include -1)
-        will_communicate = np.where(transmission_idx != -1, transmission_idx, np.arange(self.n_agents)) 
-
-        num_communicating = np.count_nonzero(attempted_transmissions - np.arange(self.n_agents))
-        num_succ_communicating = np.count_nonzero(will_communicate - np.arange(self.n_agents))
-
-        return np.where(transmission_idx != -1, transmission_idx, np.arange(self.n_agents)) 
+        successful_tranmissions = np.nan_to_num(successful_tranmissions)
+        np.seterr('warn')
+        return successful_tranmissions
 
     # Given current buffer states, will pick agent with oldest AoI to communicate with
     def greedy_controller(self):
@@ -437,7 +474,8 @@ class StationaryEnv(gym.Env):
         for i in range(self.n_agents):
             my_buffer_ts = self.network_buffer[i,:,0]
             comm_choice[i] = np.random.choice(np.flatnonzero(my_buffer_ts == my_buffer_ts.min()))
-        return comm_choice.astype(int)
+        tx_prob = np.random.uniform(size=(self.n_agents,))
+        return np.where(tx_prob < self.transmission_probability, comm_choice.astype(int), np.arange(self.n_agents))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
     def mst_controller(self):
@@ -451,7 +489,14 @@ class StationaryEnv(gym.Env):
 
             parent_refs = np.array(self.find_parents(T, [-1] * self.n_agents, degrees))
             self.mst_action = parent_refs.astype(int)
-        return self.mst_action
+        tx_prob = np.random.uniform(size=(self.n_agents,))
+        return np.where(tx_prob < self.transmission_probability, self.mst_action, np.arange(self.n_agents))
+
+    # Chooses a random action from the action space
+    def random_controller(self):
+        attempted_trans = self.action_space.sample()
+        tx_prob = np.random.uniform(size=(self.n_agents,))
+        return np.where(tx_prob < self.transmission_probability, attempted_trans, np.arange(self.n_agents))
 
 
     def find_parents(self, T, parent_ref, degrees):
@@ -468,32 +513,56 @@ class StationaryEnv(gym.Env):
         return self.find_parents(T, parent_ref, degrees) 
 
 
-    def update_buffers(self, transmission_idx):
-        # TODO : Convert this to NumPy vector operations
-        transmit_distance = []
-        # new_network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
-        for i in range(self.n_agents):
-            # agents_information = self.network_buffer[i, :, :].copy()
-            j = transmission_idx[i]
-            if i != j:
-                transmit_distance.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
-                # requested_information = self.network_buffer[j, :, :]
-                for k in range(self.n_agents):
-                    if self.network_buffer[j, k, 0] >= self.network_buffer[i, k, 0]:
-                        self.network_buffer[i, k, :] = self.network_buffer[j, k, :]
-                    elif self.symmetric_comms and self.network_buffer[j, k, 0] < self.network_buffer[i, k, 0]:
-                        self.network_buffer[j, k, :] = self.network_buffer[i, k, :]
-                self.network_buffer[i, j, 1] = i
-                if self.symmetric_comms:
-                    self.network_buffer[j, i, 1] = j
-                # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
-            # new_network_buffer[i, :, :] = agents_information
-        # self.network_buffer = new_network_buffer
+    def update_buffers(self, transmission_idx, response_idx = None):
+        assert(self.comm_model is "push" or self.comm_model is "tw")
+
+        if self.comm_model is "push":
+            transmit_distance = self.update_buffers_push(transmission_idx)
+
+        elif self.comm_model is "tw":
+            # Two-Way Communications can be modeled as a sequence of a push and a response
+            transmit_distance_push = self.update_buffers_push(transmission_idx)
+            transmit_distance_response = self.update_buffers_response(response_idx)
+            transmit_distance = transmit_distance_push + transmit_distance_response
 
         # my information is updated
         self.network_buffer[:, :, 0] += np.eye(self.n_agents)
         self.avg_transmit_distance = np.sum(np.power(transmit_distance, 3)) / self.n_agents
         # TODO divide by number of transmissions per agent
+    
+    def update_buffers_push(self, transmission_idx):
+            # TODO : Convert this to NumPy vector operations
+            transmit_distance = []
+            for i in range(self.n_agents):
+                # j is the agent that will receive i's buffer
+                j = transmission_idx[i]
+                if i != j:
+                    transmit_distance.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
+                    for k in range(self.n_agents):
+                        # if received info is newer than known info
+                        if self.network_buffer[i, k, 0] > self.network_buffer[j, k, 0]:
+                            self.network_buffer[j, k, :] = self.network_buffer[i, k, :]
+                    self.network_buffer[j, i, 1] = j
+                    # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
+            return transmit_distance
+
+    def update_buffers_response(self, resp_idx):
+            # TODO : Convert this to NumPy vector operations
+            transmit_distance = []
+            for i in range(self.n_agents):
+                # j is the agent that will receive i's buffer, i can respond to multiple j's
+                set_of_js = resp_idx[i]
+                for k in range(len(set_of_js[0])):
+                    j = set_of_js[0][k]
+                    if i != j:
+                        transmit_distance.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
+                        for k in range(self.n_agents):
+                            # if received info is newer than known info
+                            if self.network_buffer[i, k, 0] > self.network_buffer[j, k, 0]:
+                                self.network_buffer[j, k, :] = self.network_buffer[i, k, :]
+                        self.network_buffer[j, i, 1] = j
+                        # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
+            return transmit_distance
 
     def find_tree_depth(self, local_buffer):
         total_depth = 0

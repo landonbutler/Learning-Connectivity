@@ -17,41 +17,23 @@ class StationaryTest(unittest.TestCase):
         self.env = StationaryEnv()
         self.env.reset()
 
-    def test_update_buffers(self):
-        # print("sample action")
-        attempt_comm = self.env.action_space.sample()
-        # print(attempt_comm)
-
-        # print("new buffer states")
-        self.env.update_buffers(attempt_comm)
-        # print(self.env.network_buffer)
-
-    """
-    def test_render(self):
-        n = 50
-        for i in range(n):
-            attempt_comm = self.env.action_space.sample()
-            observation, reward, done, info = self.env.step(attempt_comm)
-            self.env.render()
-        
-        with imageio.get_writer('visuals/bufferTrees/randomSelection.gif', mode='I', duration=.3) as writer:
-            for i in range(1,n+1):
-                fileloc = 'visuals/bufferTrees/ts'+str(i)+'.png'
-                image = imageio.imread(fileloc)
-                writer.append_data(image)
-                os.remove(fileloc)
-    """
-
     def test_greedy(self):
-        n = 50
-        for i in range(n):
-            attempt_comm = self.env.mst_controller()
+        tot_ts = 50
+        fp = "visuals/interferenceProb/"
+        cont = "Greedy" # Greedy, MST, or Random
+        for i in range(tot_ts):
+            if cont is "Greedy":
+                attempt_comm = self.env.greedy_controller()
+            elif cont is "MST":
+                attempt_comm = self.env.mst_controller()
+            else:
+                attempt_comm = self.env.random_controller()
             observation, reward, done, info = self.env.step(attempt_comm)
-            self.env.render_interference()
+            self.env.render_interference(controller=cont, filepath=fp)
         
-        with imageio.get_writer('visuals/interference/mstInterference200.gif', mode='I', duration=.5) as writer:
-            for i in range(1,n+1):
-                fileloc = 'visuals/interference/ts'+str(i)+'.png'
+        with imageio.get_writer(fp + cont +'Interference' + str(self.env.n_agents) + '.gif', mode='I', duration=.5) as writer:
+            for i in range(1,tot_ts+1):
+                fileloc = fp + 'ts'+str(i)+'.png'
                 image = imageio.imread(fileloc)
                 writer.append_data(image)
                 os.remove(fileloc)
