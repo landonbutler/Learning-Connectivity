@@ -1,2 +1,4 @@
 __pycache__/*
 .vs/*
+/aoi_envs/__pycache__/MultiAgent.cpython-37.pyc
+/aoi_envs/__pycache__
