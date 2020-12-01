@@ -76,8 +76,6 @@ class MultiAgentEnv(gym.Env):
         self.tx_power = 10 # in dBm
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
-        self.network_buffer[:, :, 0] = -100  # motivates agents to get information in the first time step
-        self.network_buffer[:, :, 1] = -1  # no parent references yet
         self.timestep = 0
         self.avg_transmit_distance = 0.1
 
@@ -232,7 +230,7 @@ class MultiAgentEnv(gym.Env):
                                                 self.x[:, 0].reshape(self.n_agents, 1), self.network_buffer[:, :, 2])
         self.network_buffer[:, :, 3] = np.where(np.eye(self.n_agents, dtype=np.bool),
                                                 self.x[:, 1].reshape(self.n_agents, 1), self.network_buffer[:, :, 3])
-        self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0, -100)
+        self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0, -100) # motivates agents to get information in the first time step
 
         if self.is_interference:
             self.compute_distances()
@@ -452,7 +450,13 @@ class MultiAgentEnv(gym.Env):
         free_space_path_loss = 10*self.path_loss_exponent*np.log10(np.sqrt(self.r2)) + 20*np.log10(self.carrier_frequency_ghz*10**9)-147.55 #dB
         channel_gain = np.power(.1,(free_space_path_loss)/10) # this is now a unitless ratio
         numerator = np.multiply(power_mW, channel_gain) # this is in mW, numerator of the SINR
-        interference_sum = np.sum(numerator,axis=0)
+
+        # power each agent is transmitting with (in mW)
+        trans_pow_vector = np.sum(power_mW, axis = 1)
+
+        # interference felt by each agent by all network transmissions
+        interference_sum = np.matmul(channel_gain, trans_pow_vector)
+
         denominator = self.gaussian_noise_mW + np.expand_dims(interference_sum, axis=0) - numerator
         
         SINR = 10*np.log10(np.divide(numerator,denominator))
@@ -556,10 +560,10 @@ class MultiAgentEnv(gym.Env):
                     j = set_of_js[0][k]
                     if i != j:
                         transmit_distance.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
-                        for k in range(self.n_agents):
+                        for l in range(self.n_agents):
                             # if received info is newer than known info
-                            if self.network_buffer[i, k, 0] > self.network_buffer[j, k, 0]:
-                                self.network_buffer[j, k, :] = self.network_buffer[i, k, :]
+                            if self.network_buffer[i, l, 0] > self.network_buffer[j, l, 0]:
+                                self.network_buffer[j, l, :] = self.network_buffer[i, l, :]
                         self.network_buffer[j, i, 1] = j
                         # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
             return transmit_distance

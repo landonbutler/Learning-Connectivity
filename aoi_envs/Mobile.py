@@ -101,7 +101,7 @@ class MobileEnv(MultiAgentEnv):
         self.u = np.random.uniform(-self.a_max, self.a_max, size=(self.n_agents,2))
 
         self.x[:,2:4] = self.x[:,2:4] + self.u * self.ts_length
-        np.clip(self.x[:,2:4], -self.v_max, self.v_max)
+        self.x[:,2:4] = np.clip(self.x[:,2:4], -self.v_max, self.v_max)
         self.x[:,0:2] = self.x[:,0:2] + self.x[:,2:4] * self.ts_length + 0.5 * self.u * (self.ts_length ** 2)
 
         self.network_buffer[:, :, 4] = np.where(np.eye(self.n_agents, dtype=np.bool),
