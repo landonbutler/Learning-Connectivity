@@ -1,4 +1,4 @@
-from MultiAgent import MultiAgentEnv
+from aoi_envs.MultiAgent import MultiAgentEnv
 import gym
 from gym import spaces, error, utils
 from gym.utils import seeding

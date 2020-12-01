@@ -65,22 +65,22 @@ if __name__ == '__main__':
     env = make_env()
     vec_env = SubprocVecEnv([make_env])
 
-    # Specify pre-trained model checkpoint file.
-    model_name = 'models/rl_4/ckpt/ckpt_000.pkl'  # ent_coef  = 1e-6
-
-    # load the dictionary of parameters from file
-    model_params, params = BaseRLModel._load_from_file(model_name)
-    policy_kwargs = model_params['policy_kwargs']
-
-    model = PPO2(
-        policy=aoi_learner.gnn_policy.GNNPolicy,
-        n_steps=10,
-        policy_kwargs=policy_kwargs,
-        env=vec_env)
+    # # Specify pre-trained model checkpoint file.
+    # model_name = 'models/rl_4/ckpt/ckpt_000.pkl'  # ent_coef  = 1e-6
+    #
+    # # load the dictionary of parameters from file
+    # model_params, params = BaseRLModel._load_from_file(model_name)
+    # policy_kwargs = model_params['policy_kwargs']
+    #
+    # model = PPO2(
+    #     policy=aoi_learner.gnn_policy.GNNPolicy,
+    #     n_steps=10,
+    #     policy_kwargs=policy_kwargs,
+    #     env=vec_env)
 
     # update new model's parameters
-    model.load_parameters(params)
-    # model = None
+    # model.load_parameters(params)
+    model = None
 
     # print('Model loaded')
     # print('\nTest over 100 episodes...')
