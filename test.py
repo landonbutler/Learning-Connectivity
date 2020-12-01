@@ -9,8 +9,19 @@ from stable_baselines.common.vec_env import SubprocVecEnv
 from stable_baselines.common.base_class import BaseRLModel
 import tensorflow as tf
 import imageio
+import argparse
 import os
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+
+parser = argparse.ArgumentParser(description="My parser")
+parser.add_argument('-g', '--greedy', dest='greedy', action='store_true')
+parser.add_argument('-m', '--mst', dest='mst', action='store_true')
+parser.add_argument('-r', '--random', dest='random', action='store_true')
+parser.add_argument('-v', '--visualize', dest='visualize', action='store_true')
+parser.add_argument('-l', '--learner', dest='learner', action='store_true')
+
+parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False)
+args = parser.parse_args()
 
 
 def make_env():
@@ -20,7 +31,7 @@ def make_env():
     return my_env
 
 
-def eval_model(env, model, N, render_mode='none'):
+def eval_model(env, model, N, render_mode=False):
     """
     Evaluate a model against an environment over N games.
     """
@@ -33,15 +44,20 @@ def eval_model(env, model, N, render_mode='none'):
             timestep = 1
             # Run one game.
             while not done:
-                if model is None:
-                    action = env.action_space.sample()
-                else:
+                if args.learner and model:
                     action, state = model.predict(obs, state=state, deterministic=True)
+                elif args.mst:
+                    action = env.env.env.mst_controller()
+                elif args.greedy:
+                    action = env.env.env.greedy_controller()
+                else:
+                    action = env.env.env.random_controller()
+
                 state = None
                 obs, rewards, done, info = env.step(action)
-                env.render(mode=render_mode)
-
-                if render_mode == 'human':
+                # env.render(mode=render_mode)
+                if render_mode:
+                    env.env.env.render_interference()
                     time.sleep(0.1)
 
                 # Record results.
@@ -52,6 +68,7 @@ def eval_model(env, model, N, render_mode='none'):
             bar.next()
     return results
 
+
 def save_gif(model_number, timestep):
     filename = 'visuals/bufferTrees/controller' + str(model_number) + '.gif'
     with imageio.get_writer(filename, mode='I', duration=.3) as writer:
@@ -61,32 +78,35 @@ def save_gif(model_number, timestep):
             writer.append_data(image)
             os.remove(fileloc)
 
+
 if __name__ == '__main__':
     env = make_env()
     vec_env = SubprocVecEnv([make_env])
 
-    # # Specify pre-trained model checkpoint file.
-    # model_name = 'models/rl_4/ckpt/ckpt_000.pkl'  # ent_coef  = 1e-6
-    #
-    # # load the dictionary of parameters from file
-    # model_params, params = BaseRLModel._load_from_file(model_name)
-    # policy_kwargs = model_params['policy_kwargs']
-    #
-    # model = PPO2(
-    #     policy=aoi_learner.gnn_policy.GNNPolicy,
-    #     n_steps=10,
-    #     policy_kwargs=policy_kwargs,
-    #     env=vec_env)
+    if args.learner:
+        # Specify pre-trained model checkpoint file.
+        model_name = 'models/rl_4/ckpt/ckpt_000.pkl'  # ent_coef  = 1e-6
 
-    # update new model's parameters
-    # model.load_parameters(params)
-    model = None
+        # load the dictionary of parameters from file
+        model_params, params = BaseRLModel._load_from_file(model_name)
+        policy_kwargs = model_params['policy_kwargs']
 
-    # print('Model loaded')
-    # print('\nTest over 100 episodes...')
-    # results = eval_model(env, model, 100, render_mode='none')
-    # print('reward,          mean = {:.1f}, std = {:.1f}'.format(np.mean(results['reward']), np.std(results['reward'])))
-    # print('')
+        model = PPO2(
+            policy=aoi_learner.gnn_policy.GNNPolicy,
+            n_steps=10,
+            policy_kwargs=policy_kwargs,
+            env=vec_env)
+
+        # update new model's parameters
+        model.load_parameters(params)
+    else:
+        model = None
+
+    print('Model loaded')
+    print('\nTest over 100 episodes...')
+    results = eval_model(env, model, 100, render_mode=args.visualize)
+    print('reward,          mean = {:.1f}, std = {:.1f}'.format(np.mean(results['reward']), np.std(results['reward'])))
+    print('')
 
     print('\nTest over 10  episodes live visualization...')
-    eval_model(env, model, 10, render_mode='human')
+    eval_model(env, model, 10)

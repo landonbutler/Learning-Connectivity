@@ -88,6 +88,7 @@ class MultiAgentEnv(gym.Env):
 
         # Push Model: At each time step, agent selects which agent they want to 'push' their buffer to
         # Two-Way Model: An agent requests/pushes their buffer to an agent, with hopes of getting their information back
+        # self.comm_model = "tw"  # push or tw
         self.comm_model = "push"  # push or tw
 
         self.attempted_transmissions = None
@@ -287,6 +288,8 @@ class MultiAgentEnv(gym.Env):
 
             cost = self.compute_current_aoi()
             tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
+            # TODO
+            self.communication_percent = 0
             plot_str = 'Mean AoI: {0:2.2f} | Mean Depth: {1:2.2f} | Mean TX Dist: {2:2.2f} | Comm %: {3}'.format(cost,
                                                                                                                  tree_depth,
                                                                                                                  self.avg_transmit_distance,
@@ -383,11 +386,12 @@ class MultiAgentEnv(gym.Env):
                 succ_communication_percent = round((count_succ_comm / count_att_comm) * 100, 1)
             else:
                 succ_communication_percent = 0.0
-
+            self.communication_percent = communication_percent
             plot_str = 'Mean AoI: {0:2.2f} | Mean TX Dist: {1:2.2f} | Comm %: {2} | Suc Comm %: {3}'.format(cost,
                                                                                                             self.avg_transmit_distance,
                                                                                                             communication_percent,
                                                                                                             succ_communication_percent)
+
             self._plot_text.set_text(plot_str)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
