@@ -44,39 +44,46 @@ def eval_model(env, model, N, render_mode=False):
             state = None
             timestep = 1
             # Run one game.
+            controller = ""
+            gif_fp = "visuals/models/"
             while not done:
                 if args.learner and model:
                     action, state = model.predict(obs, state=state, deterministic=True)
+                    controller = "GNN"
                 elif args.mst:
                     action = env.env.env.mst_controller()
+                    controller = "MST"
                 elif args.greedy:
                     action = env.env.env.greedy_controller()
+                    controller = "Greedy"
                 elif args.random:
                     action = env.env.env.random_controller()
+                    controller = "Random"
                 else:
                     action = env.env.env.neopolitan_controller()
+                    controller = "Neopolitan"
 
                 state = None
                 obs, rewards, done, info = env.step(action)
                 # env.render(mode=render_mode)
                 if render_mode:
-                    env.env.env.render_interference()
+                    env.env.env.render_interference(controller = controller)    
                     time.sleep(0.1)
 
                 # Record results.
                 results['reward'][k] += rewards
                 timestep += 1
-            # save_gif(k, timestep)
+            # save_gif(k, timestep, gif_fp, controller)
             # print(results['reward'][k])
             bar.next()
     return results
 
 
-def save_gif(model_number, timestep):
-    filename = 'visuals/bufferTrees/controller' + str(model_number) + '.gif'
+def save_gif(model_number, tot_ts, fp, controller):
+    filename = fp + controller + str(model_number) + '.gif'
     with imageio.get_writer(filename, mode='I', duration=.3) as writer:
         for i in range(1, timestep+1):
-            fileloc = 'visuals/bufferTrees/ts'+str(i)+'.png'
+            fileloc = fp + 'ts' +str(i) +'.png'
             image = imageio.imread(fileloc)
             writer.append_data(image)
             os.remove(fileloc)

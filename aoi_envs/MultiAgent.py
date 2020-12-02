@@ -69,11 +69,11 @@ class MultiAgentEnv(gym.Env):
         self.r2 = None
         self.saved_pos = None
         self.carrier_frequency_ghz = 2.4
-        self.min_SINR = -4
+        self.min_SINR = -10 # 10-15 is consider unreliable, cited paper uses -4
         self.gaussian_noise_dBm = -90
         self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
         self.path_loss_exponent = 2
-        self.tx_power = 10  # in dBm
+        self.tx_power = 20  # in dBm
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         self.timestep = 0
@@ -84,12 +84,12 @@ class MultiAgentEnv(gym.Env):
         self.current_agents_choice = -1
         self.mst_action = None
 
-        self.transmission_probability = .7  # Probability an agent will transmit at a given time step [0,1]
+        self.transmission_probability = .5  # Probability an agent will transmit at a given time step [0,1]
 
         # Push Model: At each time step, agent selects which agent they want to 'push' their buffer to
         # Two-Way Model: An agent requests/pushes their buffer to an agent, with hopes of getting their information back
         # self.comm_model = "tw"  # push or tw
-        self.comm_model = "push"  # push or tw
+        self.comm_model = "tw"  # push or tw
 
         self.attempted_transmissions = None
         self.successful_transmissions = None
@@ -202,10 +202,11 @@ class MultiAgentEnv(gym.Env):
 
     def reset(self):
         x = np.zeros((self.n_agents, 2))
-        length = np.random.uniform(0, self.r_max, size=(self.n_agents,))
-        angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
-        x[:, 0] = length * np.cos(angle)
-        x[:, 1] = length * np.sin(angle)
+        # length = np.random.uniform(0, self.r_max, size=(self.n_agents,))
+        # angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
+        # x[:, 0] = length * np.cos(angle)
+        # x[:, 1] = length * np.sin(angle)
+        x[:,0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents,2))
 
         x_loc = np.reshape(x, (self.n_agents, 2, 1))
         a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
@@ -233,12 +234,15 @@ class MultiAgentEnv(gym.Env):
                                                 self.x[:, 1].reshape(self.n_agents, 1), self.network_buffer[:, :, 3])
         self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0,
                                                 -100)  # motivates agents to get information in the first time step
+        if self.fig != None:
+            plt.close(self.fig)
+        self.fig = None
 
         if self.is_interference:
             self.compute_distances()
         return self.get_relative_network_buffer_as_dict()
 
-    def render(self, mode='human'):
+    def render(self, mode='human', save_plots = False):
         """
         Render the environment with agents as points in 2D space
         """
@@ -297,10 +301,10 @@ class MultiAgentEnv(gym.Env):
             self._plot_text.set_text(plot_str)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
-            if self.save_plots:
+            if save_plots:
                 plt.savefig('visuals/bufferTrees/ts' + str(self.timestep) + '.png')
 
-    def render_interference(self, mode='human', controller="Random", filepath='visuals/interference/'):
+    def render_interference(self, mode='human', controller="Random", filepath='visuals/interference/', save_plots=False):
         """
         Render the interference of the environment with agents as points in 2D space
         """
@@ -316,7 +320,7 @@ class MultiAgentEnv(gym.Env):
                 plt.axis('equal')
                 plt.ylim(-.6 + -1.0 * self.r_max, .6 + 1.0 * self.r_max)
                 plt.xlim(-.6 + -1.0 * self.r_max, .6 + 1.0 * self.r_max)
-                self._plot_text = plt.text(x=0, y=-.85 * self.r_max, s="", fontsize=9, ha='center',
+                self._plot_text = plt.text(x=0, y=-.87 * self.r_max, s="", fontsize=9, ha='center',
                                            bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 4})
                 a = gca()
                 a.set_xticklabels(a.get_xticks(), font)
@@ -324,7 +328,6 @@ class MultiAgentEnv(gym.Env):
                 plt.title('Interference between Stationary Agents w/ ' + controller + ' Control Policy')
                 self.arrows = []
                 self.failed_arrows = []
-                # plt.axis('equal')
                 for i in range(self.n_agents):
                     temp_line = self.ax.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.03,
                                                minshaft=.001, minlength=0)
@@ -395,7 +398,7 @@ class MultiAgentEnv(gym.Env):
             self._plot_text.set_text(plot_str)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
-            if self.save_plots:
+            if save_plots:
                 plt.savefig(filepath + 'ts' + str(self.timestep) + '.png')
 
     def close(self):
