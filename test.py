@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(description="My parser")
 parser.add_argument('-g', '--greedy', dest='greedy', action='store_true')
 parser.add_argument('-m', '--mst', dest='mst', action='store_true')
 parser.add_argument('-r', '--random', dest='random', action='store_true')
+parser.add_argument('-n', '--neopolitan', dest='neopolitan', action='store_true')
 parser.add_argument('-v', '--visualize', dest='visualize', action='store_true')
 parser.add_argument('-l', '--learner', dest='learner', action='store_true')
 
@@ -50,8 +51,10 @@ def eval_model(env, model, N, render_mode=False):
                     action = env.env.env.mst_controller()
                 elif args.greedy:
                     action = env.env.env.greedy_controller()
-                else:
+                elif args.random:
                     action = env.env.env.random_controller()
+                else:
+                    action = env.env.env.neopolitan_controller()
 
                 state = None
                 obs, rewards, done, info = env.step(action)

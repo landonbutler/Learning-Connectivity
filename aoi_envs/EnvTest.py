@@ -19,14 +19,16 @@ class EnvTest(unittest.TestCase):
     def test_controller(self):
         tot_ts = 200
         fp = "visuals/interference/mobile/"
-        cont = "Greedy" # Greedy, MST, or Random
+        cont = "Neo" # Greedy, MST, Random, or Neopolitan
         for i in range(tot_ts):
             if cont is "Greedy":
                 attempt_comm = self.env.greedy_controller()
             elif cont is "MST":
                 attempt_comm = self.env.mst_controller()
-            else:
+            elif cont is "Random":
                 attempt_comm = self.env.random_controller()
+            else:
+                attempt_comm = self.env.neopolitan_controller()
             observation, reward, done, info = self.env.step(attempt_comm)
             self.env.render_interference(controller=cont, filepath=fp)
         

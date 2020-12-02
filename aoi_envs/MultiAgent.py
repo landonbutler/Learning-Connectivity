@@ -485,16 +485,21 @@ class MultiAgentEnv(gym.Env):
         return successful_transmissions
 
     # Given current buffer states, will pick agent with oldest AoI to communicate with
-    def greedy_controller(self):
+    def greedy_controller(self, selective_comms = True):
         comm_choice = np.zeros((self.n_agents))
         for i in range(self.n_agents):
             my_buffer_ts = self.network_buffer[i, :, 0]
             comm_choice[i] = np.random.choice(np.flatnonzero(my_buffer_ts == my_buffer_ts.min()))
-        tx_prob = np.random.uniform(size=(self.n_agents,))
-        return np.where(tx_prob < self.transmission_probability, comm_choice.astype(int), np.arange(self.n_agents))
+
+        if not selective_comms:
+            return comm_choice.astype(int)
+        else:
+            tx_prob = np.random.uniform(size=(self.n_agents,))
+            return np.where(tx_prob < self.transmission_probability, comm_choice.astype(int), np.arange(self.n_agents))
+
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self):
+    def mst_controller(self, selective_comms = True):
         if self.mst_action is None:
             self.compute_distances()
             self.dist = np.sqrt(self.r2)
@@ -504,14 +509,32 @@ class MultiAgentEnv(gym.Env):
 
             parent_refs = np.array(self.find_parents(T, [-1] * self.n_agents, degrees))
             self.mst_action = parent_refs.astype(int)
-        tx_prob = np.random.uniform(size=(self.n_agents,))
-        return np.where(tx_prob < self.transmission_probability, self.mst_action, np.arange(self.n_agents))
+        
+        if not selective_comms:
+            return self.mst_action
+        else:
+            tx_prob = np.random.uniform(size=(self.n_agents,))
+            return np.where(tx_prob < self.transmission_probability, self.mst_action, np.arange(self.n_agents))
 
     # Chooses a random action from the action space
     def random_controller(self):
         attempted_trans = self.action_space.sample()
         tx_prob = np.random.uniform(size=(self.n_agents,))
         return np.where(tx_prob < self.transmission_probability, attempted_trans, np.arange(self.n_agents))
+
+    # 33% MST, 33% Greedy, 33% Random
+    def neopolitan_controller(self, selective_comms = True):
+        random_action = self.action_space.sample()
+        mst_action = self.mst_controller(False)
+        greedy_action = self.greedy_controller(False)
+
+        rand_3 = np.random.randint(0, 3, size=(self.n_agents,))
+        neopolitan_action = np.where(rand_3 == 0, random_action, (np.where(rand_3 == 1, mst_action, greedy_action)))
+        if not selective_comms:
+            return neopolitan_action
+        else:
+            tx_prob = np.random.uniform(size=(self.n_agents,))
+            return np.where(tx_prob < self.transmission_probability, neopolitan_action, np.arange(self.n_agents))
 
     def find_parents(self, T, parent_ref, degrees):
         leaves = [i for i in range(self.n_agents) if degrees[i] == 1]
