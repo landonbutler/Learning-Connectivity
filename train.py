@@ -1,5 +1,4 @@
 import gym
-import gym_flock
 import configparser
 import json
 from os import path
