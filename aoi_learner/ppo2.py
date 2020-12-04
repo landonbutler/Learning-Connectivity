@@ -441,6 +441,7 @@ class PPO2(ActorCriticRLModel):
                     explained_var = explained_variance(values, returns)
                     logger.logkv("serial_timesteps", update * self.n_steps)
                     logger.logkv("n_updates", update)
+                    logger.logkv("learning_rate", lr_now)
                     logger.logkv("total_timesteps", self.num_timesteps)
                     logger.logkv("fps", fps)
                     logger.logkv("explained_variance", float(explained_var))

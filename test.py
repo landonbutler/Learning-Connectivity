@@ -17,8 +17,9 @@ parser.add_argument('-r', '--random', dest='random', action='store_true')
 parser.add_argument('-n', '--neopolitan', dest='neopolitan', action='store_true')
 parser.add_argument('-v', '--visualize', dest='visualize', action='store_true')
 parser.add_argument('-l', '--learner', dest='learner', action='store_true')
+parser.add_argument('-b', '--buffer', dest='buffer', action='store_true')
 
-parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False)
+parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, buffer=False)
 args = parser.parse_args()
 
 
@@ -45,7 +46,7 @@ def eval_model(env, model, N, render=False):
             gif_fp = "visuals/models/"
             while not done:
                 if args.learner and model:
-                    action, state = model.predict(obs, state=state, deterministic=True)
+                    action, state = model.predict(obs, state=state, deterministic=False)
                     controller = "GNN"
                 elif args.mst:
                     action = env.env.env.mst_controller()
@@ -64,7 +65,10 @@ def eval_model(env, model, N, render=False):
                 obs, rewards, done, info = env.step(action)
                 # env.render(mode=render_mode)
                 if render:
-                    env.env.env.render_interference(controller = controller)    
+                    if args.buffer:
+                        env.env.env.render()
+                    else:
+                        env.env.env.render_interference(controller=controller)
                     time.sleep(0.1)
 
                 # Record results.
@@ -98,7 +102,10 @@ if __name__ == '__main__':
         vec_env = SubprocVecEnv([make_env])
 
         # Specify pre-trained model checkpoint file.
-        model_name = 'models/rl_4/ckpt/ckpt_000.pkl'  # ent_coef  = 1e-6
+        # model_name = 'models/rl_4/ckpt/ckpt_000.pkl'  # ent_coef  = 1e-6
+
+        # model_name = 'models/rl_Landon/RL_GNN_5_ENT5_1/RL_GNN_5_ENT5_1.pkl'
+        model_name = 'models/rl_15/ckpt/ckpt_481.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)

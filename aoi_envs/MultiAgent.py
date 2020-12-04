@@ -71,7 +71,7 @@ class MultiAgentEnv(gym.Env):
         self.r2 = None
         self.saved_pos = None
         self.carrier_frequency_ghz = 2.4
-        self.min_SINR = -10 # 10-15 is consider unreliable, cited paper uses -4
+        self.min_SINR = -10  # 10-15 is consider unreliable, cited paper uses -4
         self.gaussian_noise_dBm = -90
         self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
         self.path_loss_exponent = 2
@@ -144,7 +144,7 @@ class MultiAgentEnv(gym.Env):
         # for successful transmissions, updates the buffers of those receiving information
 
         self.timestep = self.timestep + 1
-        return self.get_relative_network_buffer_as_dict(), - self.instant_cost()/100.0, False, {}
+        return self.get_relative_network_buffer_as_dict(), - self.instant_cost() / 100.0, False, {}
 
     def get_relative_network_buffer_as_dict(self):
         """
@@ -208,7 +208,7 @@ class MultiAgentEnv(gym.Env):
         # angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
         # x[:, 0] = length * np.cos(angle)
         # x[:, 1] = length * np.sin(angle)
-        x[:,0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents,2))
+        x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
 
         x_loc = np.reshape(x, (self.n_agents, 2, 1))
         a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
@@ -245,7 +245,7 @@ class MultiAgentEnv(gym.Env):
             self.compute_distances()
         return self.get_relative_network_buffer_as_dict()
 
-    def render(self, mode='human', save_plots = False):
+    def render(self, mode='human', save_plots=False):
         """
         Render the environment with agents as points in 2D space
         """
@@ -272,7 +272,7 @@ class MultiAgentEnv(gym.Env):
                     temp_line, = self.ax.plot([], [], 'k')
                     self.arrows.append(temp_line)
 
-                self.current_arrow, = self.ax.plot([], [], 'r')
+                self.current_arrow, = self.ax.plot([], [], 'g')
 
             if self.timestep <= 1:
                 # Plot the agent locations at the start of the episode
@@ -295,19 +295,37 @@ class MultiAgentEnv(gym.Env):
 
             cost = self.compute_current_aoi()
             tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
-            # TODO
-            self.communication_percent = 0
+            succ_communication_percent = self.get_successful_communication_percent()
             plot_str = 'Mean AoI: {0:2.2f} | Mean Depth: {1:2.2f} | Mean TX Dist: {2:2.2f} | Comm %: {3}'.format(cost,
                                                                                                                  tree_depth,
                                                                                                                  self.avg_transmit_distance,
-                                                                                                                 self.communication_percent)
+                                                                                                                 succ_communication_percent)
             self._plot_text.set_text(plot_str)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             if save_plots:
                 plt.savefig('visuals/bufferTrees/ts' + str(self.timestep) + '.png')
 
-    def render_interference(self, mode='human', controller="Random", filepath='visuals/interference/', save_plots=False):
+    def get_successful_communication_percent(self):
+        count_succ_comm = 0
+        count_att_comm = 0
+        for i in range(self.n_agents):
+            if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
+                # agent chose to attempt transmission
+                count_att_comm += 1
+                # agent chooses to communicate with j
+                j = self.attempted_transmissions[i]
+                if j == self.successful_transmissions[i]:
+                    # communication linkage is successful - black
+                    count_succ_comm += 1
+        if count_att_comm > 0:
+            succ_communication_percent = round((count_succ_comm / count_att_comm) * 100, 1)
+        else:
+            succ_communication_percent = 0.0
+        return succ_communication_percent
+
+    def render_interference(self, mode='human', controller="Random", filepath='visuals/interference/',
+                            save_plots=False):
         """
         Render the interference of the environment with agents as points in 2D space
         """
@@ -348,55 +366,34 @@ class MultiAgentEnv(gym.Env):
                 self.agent0_marker.set_xdata(self.x[0, 0])
                 self.agent0_marker.set_ydata(self.x[0, 1])
 
-            count_succ_comm = 0
-            count_att_comm = 0
             for i in range(self.n_agents):
                 if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
                     # agent chose to attempt transmission
-                    count_att_comm += 1
 
                     # agent chooses to communicate with j
                     j = self.attempted_transmissions[i]
-                    k = self.successful_transmissions[i]
 
                     if j == self.successful_transmissions[i]:
                         # communication linkage is successful - black
-                        count_succ_comm += 1
                         self.arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
-                        # self.arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
-                        # self.arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
                         self.failed_arrows[i].set_UVC(0, 0)
-                        # self.failed_arrows[i].set_xdata([])
-                        # self.failed_arrows[i].set_ydata([])
+
                     else:
                         # communication linkage is unsuccessful - red
-                        # self.failed_arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
-                        # self.failed_arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
                         self.arrows[i].set_UVC(0, 0)
                         self.failed_arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
-                        # self.arrows[i].set_xdata([])
-                        # self.arrows[i].set_ydata([])
                 else:
                     # agent chose to not attempt transmission
                     self.arrows[i].set_UVC(0, 0)
-                    # self.arrows[i].set_xdata([])
-                    # self.arrows[i].set_ydata([])
-                    # self.failed_arrows[i].set_xdata([])
-                    # self.failed_arrows[i].set_ydata([])
                     self.failed_arrows[i].set_UVC(0, 0)
 
             cost = self.compute_current_aoi()
-            tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
-            communication_percent = round((count_succ_comm / self.n_agents) * 100, 1)
-            if count_att_comm > 0:
-                succ_communication_percent = round((count_succ_comm / count_att_comm) * 100, 1)
-            else:
-                succ_communication_percent = 0.0
-            self.communication_percent = communication_percent
-            plot_str = 'Mean AoI: {0:2.2f} | Mean TX Dist: {1:2.2f} | Comm %: {2} | Suc Comm %: {3}'.format(cost,
-                                                                                                            self.avg_transmit_distance,
-                                                                                                            communication_percent,
-                                                                                                            succ_communication_percent)
+            # tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
+
+            succ_communication_percent = self.get_successful_communication_percent()
+            plot_str = 'Mean AoI: {0:2.2f} | Mean TX Dist: {1:2.2f} | Suc Comm %: {2}'.format(cost,
+                                                                                              self.avg_transmit_distance,
+                                                                                              succ_communication_percent)
 
             self._plot_text.set_text(plot_str)
             self.fig.canvas.draw()
@@ -491,7 +488,7 @@ class MultiAgentEnv(gym.Env):
         return successful_transmissions
 
     # Given current buffer states, will pick agent with oldest AoI to communicate with
-    def greedy_controller(self, selective_comms = True):
+    def greedy_controller(self, selective_comms=True):
         comm_choice = np.zeros((self.n_agents))
         for i in range(self.n_agents):
             my_buffer_ts = self.network_buffer[i, :, 0]
@@ -503,9 +500,8 @@ class MultiAgentEnv(gym.Env):
             tx_prob = np.random.uniform(size=(self.n_agents,))
             return np.where(tx_prob < self.transmission_probability, comm_choice.astype(int), np.arange(self.n_agents))
 
-
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self, selective_comms = True):
+    def mst_controller(self, selective_comms=True):
         if self.mst_action is None:
             self.compute_distances()
             self.dist = np.sqrt(self.r2)
@@ -515,7 +511,7 @@ class MultiAgentEnv(gym.Env):
 
             parent_refs = np.array(self.find_parents(T, [-1] * self.n_agents, degrees))
             self.mst_action = parent_refs.astype(int)
-        
+
         if not selective_comms:
             return self.mst_action
         else:
@@ -529,7 +525,7 @@ class MultiAgentEnv(gym.Env):
         return np.where(tx_prob < self.transmission_probability, attempted_trans, np.arange(self.n_agents))
 
     # 33% MST, 33% Greedy, 33% Random
-    def neopolitan_controller(self, selective_comms = True):
+    def neopolitan_controller(self, selective_comms=True):
         random_action = self.action_space.sample()
         mst_action = self.mst_controller(False)
         greedy_action = self.greedy_controller(False)

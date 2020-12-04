@@ -61,26 +61,27 @@ class AggregationNet(snt.AbstractModule):
         def make_mlp():
             return snt.nets.MLP([latent_size] * n_layers, activate_final=True)
 
-        # Edge block copies the node features onto the edges.
-        core_a = blocks.EdgeBlock(
-            edge_model_fn=lambda: Identity(),
-            use_edges=False,
-            use_receiver_nodes=False,
-            use_sender_nodes=True,
-            use_globals=False,
-            name='LinearNodeAggGCN_core_a')
+        if self._num_processing_steps > 0:
+            # Edge block copies the node features onto the edges.
+            core_a = blocks.EdgeBlock(
+                edge_model_fn=lambda: Identity(),
+                use_edges=False,
+                use_receiver_nodes=False,
+                use_sender_nodes=True,
+                use_globals=False,
+                name='LinearNodeAggGCN_core_a')
 
-        # Then, edge data is aggregated onto the node by the reducer function.
-        core_b = blocks.NodeBlock(
-            node_model_fn=lambda: Identity(),
-            use_received_edges=True,
-            use_sent_edges=False,
-            use_nodes=False,
-            use_globals=False,
-            received_edges_reducer=reducer,
-            name='LinearNodeAggGCN_core_b')
+            # Then, edge data is aggregated onto the node by the reducer function.
+            core_b = blocks.NodeBlock(
+                node_model_fn=lambda: Identity(),
+                use_received_edges=True,
+                use_sent_edges=False,
+                use_nodes=False,
+                use_globals=False,
+                received_edges_reducer=reducer,
+                name='LinearNodeAggGCN_core_b')
 
-        self._cores = [core_a, core_b]
+            self._cores = [core_a, core_b]
 
         self._encoder = modules.GraphIndependent(make_mlp, make_mlp, make_mlp, name="encoder")
         self._decoder = modules.GraphIndependent(make_mlp, make_mlp, make_mlp, name="decoder")
@@ -150,18 +151,19 @@ class NonLinearGraphNet(snt.AbstractModule):
         def make_mlp():
             return snt.nets.MLP([latent_size] * n_layers, activate_final=False)
 
-        # Edge model f^e(v_sender, v_receiver, e)     -   in the linear linear model, f^e = v_sender
-        # Average over all the received edge features to get e'
-        # Node model f^v(v, e'), but in the linear model, it was just f^v = e'
-        self._core = modules.GraphNetwork(
-            edge_model_fn=make_mlp,
-            node_model_fn=make_mlp,
-            global_model_fn=make_mlp,
-            edge_block_opt={'use_globals': False},
-            node_block_opt={'use_globals': False, 'use_sent_edges': False},
-            name="graph_net",
-            reducer=reducer
-        )
+        if self._num_processing_steps > 0:
+            # Edge model f^e(v_sender, v_receiver, e)     -   in the linear linear model, f^e = v_sender
+            # Average over all the received edge features to get e'
+            # Node model f^v(v, e'), but in the linear model, it was just f^v = e'
+            self._core = modules.GraphNetwork(
+                edge_model_fn=make_mlp,
+                node_model_fn=make_mlp,
+                global_model_fn=make_mlp,
+                edge_block_opt={'use_globals': False},
+                node_block_opt={'use_globals': False, 'use_sent_edges': False},
+                name="graph_net",
+                reducer=reducer
+            )
 
         self._encoder = modules.GraphIndependent(make_mlp, make_mlp, make_mlp, name="encoder")
         self._decoder = modules.GraphIndependent(make_mlp, make_mlp, make_mlp, name="decoder")
