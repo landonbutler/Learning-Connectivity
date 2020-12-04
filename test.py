@@ -3,10 +3,7 @@ from progress.bar import Bar
 import gym
 import time
 import aoi_envs
-import aoi_learner
-from aoi_learner.ppo2 import PPO2
-from stable_baselines.common.vec_env import SubprocVecEnv
-from stable_baselines.common.base_class import BaseRLModel
+
 import tensorflow as tf
 import imageio
 import argparse
@@ -32,7 +29,7 @@ def make_env():
     return my_env
 
 
-def eval_model(env, model, N, render_mode=False):
+def eval_model(env, model, N, render=False):
     """
     Evaluate a model against an environment over N games.
     """
@@ -66,7 +63,7 @@ def eval_model(env, model, N, render_mode=False):
                 state = None
                 obs, rewards, done, info = env.step(action)
                 # env.render(mode=render_mode)
-                if render_mode:
+                if render:
                     env.env.env.render_interference(controller = controller)    
                     time.sleep(0.1)
 
@@ -79,7 +76,7 @@ def eval_model(env, model, N, render_mode=False):
     return results
 
 
-def save_gif(model_number, tot_ts, fp, controller):
+def save_gif(model_number, timestep, fp, controller):
     filename = fp + controller + str(model_number) + '.gif'
     with imageio.get_writer(filename, mode='I', duration=.3) as writer:
         for i in range(1, timestep+1):
@@ -91,9 +88,15 @@ def save_gif(model_number, tot_ts, fp, controller):
 
 if __name__ == '__main__':
     env = make_env()
-    vec_env = SubprocVecEnv([make_env])
 
     if args.learner:
+        import aoi_learner
+        from aoi_learner.ppo2 import PPO2
+        from stable_baselines.common.vec_env import SubprocVecEnv
+        from stable_baselines.common.base_class import BaseRLModel
+
+        vec_env = SubprocVecEnv([make_env])
+
         # Specify pre-trained model checkpoint file.
         model_name = 'models/rl_4/ckpt/ckpt_000.pkl'  # ent_coef  = 1e-6
 
@@ -114,9 +117,9 @@ if __name__ == '__main__':
 
     print('Model loaded')
     print('\nTest over 100 episodes...')
-    results = eval_model(env, model, 100, render_mode=args.visualize)
+    results = eval_model(env, model, 100, render=args.visualize)
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(np.mean(results['reward']), np.std(results['reward'])))
     print('')
 
     print('\nTest over 10  episodes live visualization...')
-    eval_model(env, model, 10)
+    eval_model(env, model, 10, render=True)
