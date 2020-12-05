@@ -17,14 +17,18 @@ parser.add_argument('-r', '--random', dest='random', action='store_true')
 parser.add_argument('-n', '--neopolitan', dest='neopolitan', action='store_true')
 parser.add_argument('-v', '--visualize', dest='visualize', action='store_true')
 parser.add_argument('-l', '--learner', dest='learner', action='store_true')
-parser.add_argument('-b', '--buffer', dest='buffer', action='store_true')
+parser.add_argument('-me', '--mobileenv', dest='mobile_env', action='store_true')
+parser.add_argument('-gif', '--gif', dest='gif', action='store_true')
 
-parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, buffer=False)
+parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, mobile_env=False, gif=False)
 args = parser.parse_args()
 
 
 def make_env():
-    env_name = "StationaryEnv-v0"
+    if args.mobile_env:
+        env_name = "MobileEnv-v0"
+    else:
+        env_name = "StationaryEnv-v0"
     my_env = gym.make(env_name)
     my_env = gym.wrappers.FlattenDictWrapper(my_env, dict_keys=my_env.env.keys)
     return my_env
@@ -65,16 +69,14 @@ def eval_model(env, model, N, render=False):
                 obs, rewards, done, info = env.step(action)
                 # env.render(mode=render_mode)
                 if render:
-                    if args.buffer:
-                        env.env.env.render()
-                    else:
-                        env.env.env.render_interference(controller=controller)
+                    env.env.env.render(controller=controller, save_plots=args.gif)
                     time.sleep(0.1)
 
                 # Record results.
                 results['reward'][k] += rewards
                 timestep += 1
-            # save_gif(k, timestep, gif_fp, controller)
+            if args.gif:
+                save_gif(k, timestep, gif_fp, controller)
             # print(results['reward'][k])
             bar.next()
     return results

@@ -86,7 +86,9 @@ class MultiAgentEnv(gym.Env):
         self.current_agents_choice = -1
         self.mst_action = None
 
-        self.transmission_probability = .5  # Probability an agent will transmit at a given time step [0,1]
+        self.network_connected = False
+
+        self.transmission_probability = 1  # Probability an agent will transmit at a given time step [0,1]
 
         # Push Model: At each time step, agent selects which agent they want to 'push' their buffer to
         # Two-Way Model: An agent requests/pushes their buffer to an agent, with hopes of getting their information back
@@ -98,7 +100,7 @@ class MultiAgentEnv(gym.Env):
 
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
-        self.save_plots = True
+        self.save_plots = False
         self.seed()
 
     def params_from_cfg(self, args):
@@ -135,7 +137,10 @@ class MultiAgentEnv(gym.Env):
                 attempted_transmissions)  # calculates interference from attempted transmissions
         self.successful_transmissions = successful_transmissions
 
-        self.current_agents_choice = attempted_transmissions[0]
+        self.current_agents_choice = self.successful_transmissions[0]
+
+        if not self.network_connected:
+            self.is_network_connected()
 
         if self.comm_model is "tw":
             self.update_buffers(successful_transmissions, resp_trans)
@@ -245,61 +250,122 @@ class MultiAgentEnv(gym.Env):
             self.compute_distances()
         return self.get_relative_network_buffer_as_dict()
 
-    def render(self, mode='human', save_plots=False):
+
+    def render(self, mode='human', save_plots=False, controller="Random", mobile=False):
         """
         Render the environment with agents as points in 2D space
         """
         if mode == 'human':
             if self.fig == None:
                 plt.ion()
-                self.fig = plt.figure()
-                self.ax = self.fig.add_subplot(111)
-                self.agent_markers, = self.ax.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
-                self.agent0_marker, = self.ax.plot([], [], 'go')
+                self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(10,5))
+                self.ax1.set_aspect('equal')
+                self.ax2.set_aspect('equal')
 
-                # Make extra space for the legend
-                plt.ylim(-.8 + -1.0 * self.r_max, 1.0 * self.r_max)
-                plt.xlim(-1.0 * self.r_max, 1.0 * self.r_max)
-                self._plot_text = plt.text(x=0, y=-1.2 * self.r_max, s="", fontsize=9, ha='center',
-                                           bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 6})
-                a = gca()
-                a.set_xticklabels(a.get_xticks(), font)
-                a.set_yticklabels(a.get_yticks(), font)
-                plt.title('Stationary Agent\'s Buffer Tree w/ MST  Control Policy')
+                self.ax1.set_ylim(-1.0 * self.r_max - 0.075, 1.0 * self.r_max + 0.075)
+                self.ax1.set_xlim(-1.0 * self.r_max - 0.075, 1.0 * self.r_max + 0.075)
+                self.ax2.set_ylim(-1.0 * self.r_max - 0.075, 1.0 * self.r_max + 0.075)
+                self.ax2.set_xlim(-1.0 * self.r_max - 0.075, 1.0 * self.r_max + 0.075)
+               
+                self.ax1.set_xticklabels(self.ax1.get_xticks(), font)
+                self.ax1.set_yticklabels(self.ax1.get_yticks(), font)
+                self.ax2.set_xticklabels(self.ax2.get_xticks(), font)
+                self.ax2.set_yticklabels(self.ax2.get_yticks(), font)
+                self.ax1.set_title('Network Interference')
+                self.ax2.set_title('Agent 0\'s Buffer Tree')
+                self.fig.suptitle(controller + ' Control Policy of Stationary Agents', fontsize=16)
+
+
+                self.fig.subplots_adjust(top=0.9, left=0.1, right=0.9, bottom=0.12)  # create some space below the plots by increasing the bottom-value
+                self._plot_text = plt.text(x=-3.1, y=-3.3, ha='center', va='center', s="", fontsize=11,
+                                           bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad':5})
+                
+                self.agent_markers1, = self.ax1.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
+                self.agent0_marker1, = self.ax1.plot([], [], 'go')
+                self.agent_markers2, = self.ax2.plot([], [], 'bo')
+                self.agent0_marker2, = self.ax2.plot([], [], 'go')
+
                 self.arrows = []
-
+                self.failed_arrows = []
+                self.paths = []
+                self.current_path, = self.ax2.plot([], [], 'g')
                 for i in range(self.n_agents):
-                    temp_line, = self.ax.plot([], [], 'k')
-                    self.arrows.append(temp_line)
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.03,
+                                               minshaft=.001, minlength=0)
+                    self.arrows.append(temp_arrow)
+                    temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1, units='xy',
+                                                       width=.03, minshaft=.001, minlength=0)
+                    self.failed_arrows.append(temp_failed_arrow)
 
-                self.current_arrow, = self.ax.plot([], [], 'g')
+                    temp_line, = self.ax2.plot([], [], 'k')
+                    self.paths.append(temp_line)
 
-            if self.timestep <= 1:
+            if mobile or self.timestep <= 1:
                 # Plot the agent locations at the start of the episode
-                self.agent_markers.set_xdata(self.x[:, 0])
-                self.agent_markers.set_ydata(self.x[:, 1])
-                self.agent0_marker.set_xdata(self.x[0, 0])
-                self.agent0_marker.set_ydata(self.x[0, 1])
+                self.agent_markers1.set_xdata(self.x[:, 0])
+                self.agent_markers1.set_ydata(self.x[:, 1])
+                self.agent0_marker1.set_xdata(self.x[0, 0])
+                self.agent0_marker1.set_ydata(self.x[0, 1])
+                self.agent_markers2.set_xdata(self.x[:, 0])
+                self.agent_markers2.set_ydata(self.x[:, 1])
+                self.agent0_marker2.set_xdata(self.x[0, 0])
+                self.agent0_marker2.set_ydata(self.x[0, 1])
+
+            if mobile:
+                for i in range(self.n_agents):
+                    self.arrows[i].remove()
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.03,
+                                               minshaft=.001, minlength=0)
+                    self.arrows[i] = temp_arrow
+
+                    self.failed_arrows[i].remove()
+                    temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1, units='xy',
+                                                       width=.03, minshaft=.001, minlength=0)
+                    self.failed_arrows[i] = temp_failed_arrow
 
             for i in range(self.n_agents):
                 j = int(self.network_buffer[0, i, 1])
                 if j != -1:
-                    self.arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
-                    self.arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
+                    self.paths[i].set_xdata([self.x[i, 0], self.x[j, 0]])
+                    self.paths[i].set_ydata([self.x[i, 1], self.x[j, 1]])
                     if i == self.current_agents_choice:
-                        self.current_arrow.set_xdata([self.x[i, 0], self.x[0, 0]])
-                        self.current_arrow.set_ydata([self.x[i, 1], self.x[0, 1]])
+                        self.current_path.set_xdata([self.x[i, 0], self.x[0, 0]])
+                        self.current_path.set_ydata([self.x[i, 1], self.x[0, 1]])
                 else:
-                    self.arrows[i].set_xdata([])
-                    self.arrows[i].set_ydata([])
+                    self.paths[i].set_xdata([])
+                    self.paths[i].set_ydata([])
+                    self.current_path.set_xdata([])
+                    self.current_path.set_ydata([])
+
+                if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
+                    # agent chose to attempt transmission
+
+                    # agent chooses to communicate with j
+                    j = self.attempted_transmissions[i]
+
+                    if j == self.successful_transmissions[i]:
+                        # communication linkage is successful - black
+                        self.arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
+                        self.failed_arrows[i].set_UVC(0, 0)
+
+                    else:
+                        # communication linkage is unsuccessful - red
+                        self.arrows[i].set_UVC(0, 0)
+                        self.failed_arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
+                else:
+                    # agent chose to not attempt transmission
+                    self.arrows[i].set_UVC(0, 0)
+                    self.failed_arrows[i].set_UVC(0, 0)
 
             cost = self.compute_current_aoi()
+
             tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
             succ_communication_percent = self.get_successful_communication_percent()
-            plot_str = 'Mean AoI: {0:2.2f} | Mean Depth: {1:2.2f} | Mean TX Dist: {2:2.2f} | Comm %: {3}'.format(cost,
+            plot_str = 'Mean AoI: {0:2.2f} | Mean Depth: {1:2.2f} | Mean TX Dist: {2:2.2f} | Comm %: {3} | Connected Network: {4}'.format(cost,
                                                                                                                  tree_depth,
                                                                                                                  self.avg_transmit_distance,
-                                                                                                                 succ_communication_percent)
+                                                                                                                 succ_communication_percent,
+                                                                                                                 self.network_connected)
             self._plot_text.set_text(plot_str)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
@@ -323,83 +389,6 @@ class MultiAgentEnv(gym.Env):
         else:
             succ_communication_percent = 0.0
         return succ_communication_percent
-
-    def render_interference(self, mode='human', controller="Random", filepath='visuals/interference/',
-                            save_plots=False):
-        """
-        Render the interference of the environment with agents as points in 2D space
-        """
-        if mode == 'human':
-            if self.fig == None:
-                plt.ion()
-                self.fig = plt.figure()
-                self.ax = self.fig.add_subplot(111)
-                self.agent_markers, = self.ax.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
-                self.agent0_marker, = self.ax.plot([], [], 'go')
-
-                # Make extra space for the legend
-                plt.axis('equal')
-                plt.ylim(-.6 + -1.0 * self.r_max, .6 + 1.0 * self.r_max)
-                plt.xlim(-.6 + -1.0 * self.r_max, .6 + 1.0 * self.r_max)
-                self._plot_text = plt.text(x=0, y=-.87 * self.r_max, s="", fontsize=9, ha='center',
-                                           bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 4})
-                a = gca()
-                a.set_xticklabels(a.get_xticks(), font)
-                a.set_yticklabels(a.get_yticks(), font)
-                plt.title('Interference between Stationary Agents w/ ' + controller + ' Control Policy')
-                self.arrows = []
-                self.failed_arrows = []
-                for i in range(self.n_agents):
-                    temp_line = self.ax.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.03,
-                                               minshaft=.001, minlength=0)
-                    # temp_line, = self.ax.plot([], [], 'k') # black
-                    self.arrows.append(temp_line)
-                    # temp_failed_arrow, = self.ax.plot([], [], 'r') # red
-                    temp_failed_arrow = self.ax.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1, units='xy',
-                                                       width=.03, minshaft=.001, minlength=0)
-                    self.failed_arrows.append(temp_failed_arrow)
-
-            if self.timestep <= 1:
-                # Plot the agent locations at the start of the episode
-                self.agent_markers.set_xdata(self.x[:, 0])
-                self.agent_markers.set_ydata(self.x[:, 1])
-                self.agent0_marker.set_xdata(self.x[0, 0])
-                self.agent0_marker.set_ydata(self.x[0, 1])
-
-            for i in range(self.n_agents):
-                if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
-                    # agent chose to attempt transmission
-
-                    # agent chooses to communicate with j
-                    j = self.attempted_transmissions[i]
-
-                    if j == self.successful_transmissions[i]:
-                        # communication linkage is successful - black
-                        self.arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
-                        self.failed_arrows[i].set_UVC(0, 0)
-
-                    else:
-                        # communication linkage is unsuccessful - red
-                        self.arrows[i].set_UVC(0, 0)
-                        self.failed_arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
-                else:
-                    # agent chose to not attempt transmission
-                    self.arrows[i].set_UVC(0, 0)
-                    self.failed_arrows[i].set_UVC(0, 0)
-
-            cost = self.compute_current_aoi()
-            # tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
-
-            succ_communication_percent = self.get_successful_communication_percent()
-            plot_str = 'Mean AoI: {0:2.2f} | Mean TX Dist: {1:2.2f} | Suc Comm %: {2}'.format(cost,
-                                                                                              self.avg_transmit_distance,
-                                                                                              succ_communication_percent)
-
-            self._plot_text.set_text(plot_str)
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
-            if save_plots:
-                plt.savefig(filepath + 'ts' + str(self.timestep) + '.png')
 
     def close(self):
         pass
@@ -602,6 +591,10 @@ class MultiAgentEnv(gym.Env):
             new_agent = int(local_buffer[int(agent)])
             return self.find_depth(cur_count + 1, new_agent, local_buffer)
 
+    def is_network_connected(self):
+        if np.nonzero(self.network_buffer[:,:,1] + 1)[0].shape[0] == (self.n_agents ** 2 - self.n_agents):
+            self.network_connected = True
+    
     @staticmethod
     def unpack_obs(obs, ob_space):
         assert tf is not None, "Function unpack_obs() is not available if Tensorflow is not imported."
