@@ -3,12 +3,9 @@ from progress.bar import Bar
 import gym
 import time
 import aoi_envs
-
-import tensorflow as tf
 import imageio
 import argparse
 import os
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
 parser = argparse.ArgumentParser(description="My parser")
 parser.add_argument('-g', '--greedy', dest='greedy', action='store_true')
@@ -91,7 +88,6 @@ def save_gif(model_number, timestep, fp, controller):
 
 
 if __name__ == '__main__':
-    env = make_env()
 
     if args.learner:
         import aoi_learner
@@ -102,10 +98,9 @@ if __name__ == '__main__':
         vec_env = SubprocVecEnv([make_env])
 
         # Specify pre-trained model checkpoint file.
-        # model_name = 'models/rl_4/ckpt/ckpt_000.pkl'  # ent_coef  = 1e-6
 
-        model_name = 'models/rl_Landon/RL_GNN_5_ENT5_1/RL_GNN_5_ENT5_1.pkl'
-        # model_name = 'models/rl_15/ckpt/ckpt_481.pkl'
+        # model_name = 'models/rl_Landon/RL_GNN_5_ENT5_1/RL_GNN_5_ENT5_1.pkl'
+        model_name = 'models/rl_nonlinear_6_0/ckpt/ckpt_090.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)
@@ -119,14 +114,20 @@ if __name__ == '__main__':
 
         # update new model's parameters
         model.load_parameters(params)
+        print('Model loaded')
     else:
         model = None
 
-    print('Model loaded')
-    print('\nTest over 100 episodes...')
-    results = eval_model(env, model, 100, render=args.visualize)
+    env = make_env()
+
+    if args.visualize:
+        print('\nTest over 10  episodes live visualization...')
+        eval_model(env, model, 10, render=True)
+
+    n_episodes = 20
+    print('\nTest over ' + str(n_episodes) + ' episodes...')
+    results = eval_model(env, model, n_episodes)
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(np.mean(results['reward']), np.std(results['reward'])))
     print('')
 
-    print('\nTest over 10  episodes live visualization...')
-    eval_model(env, model, 10, render=True)
+
