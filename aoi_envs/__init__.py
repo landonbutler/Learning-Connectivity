@@ -1,4 +1,3 @@
-# from aoi_envs.Stationary import StationaryEnv
 from aoi_envs.MultiAgent import MultiAgentEnv
 from aoi_envs.Mobile import MobileEnv
 from gym.envs.registration import register
