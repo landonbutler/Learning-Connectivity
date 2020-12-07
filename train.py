@@ -129,7 +129,7 @@ def run_experiment(args, section_name='', env=None, test_env=None):
         'cliprange': args.getfloat('cliprange', 0.2),
         'adam_epsilon': args.getfloat('adam_epsilon', 1e-6),
         'vf_coef': args.getfloat('vf_coef', 0.5),
-        'ent_coef': args.getfloat('ent_coef', 0.01),
+        'ent_coef': args.getfloat('ent_coef', 1e-6),
         'lr_decay_factor': args.getfloat('lr_decay_factor', 1.0),
         # 'lr_decay_factor': args.getfloat('lr_decay_factor', 0.97),
         'lr_decay_steps': args.getfloat('lr_decay_steps', 10000),

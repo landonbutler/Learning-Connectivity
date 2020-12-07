@@ -250,7 +250,6 @@ class MultiAgentEnv(gym.Env):
             self.compute_distances()
         return self.get_relative_network_buffer_as_dict()
 
-
     def render(self, mode='human', save_plots=False, controller="Random", mobile=False):
         """
         Render the environment with agents as points in 2D space
@@ -258,7 +257,7 @@ class MultiAgentEnv(gym.Env):
         if mode == 'human':
             if self.fig == None:
                 plt.ion()
-                self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(10,5))
+                self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(10, 5))
                 self.ax1.set_aspect('equal')
                 self.ax2.set_aspect('equal')
 
@@ -266,7 +265,7 @@ class MultiAgentEnv(gym.Env):
                 self.ax1.set_xlim(-1.0 * self.r_max - 0.075, 1.0 * self.r_max + 0.075)
                 self.ax2.set_ylim(-1.0 * self.r_max - 0.075, 1.0 * self.r_max + 0.075)
                 self.ax2.set_xlim(-1.0 * self.r_max - 0.075, 1.0 * self.r_max + 0.075)
-               
+
                 self.ax1.set_xticklabels(self.ax1.get_xticks(), font)
                 self.ax1.set_yticklabels(self.ax1.get_yticks(), font)
                 self.ax2.set_xticklabels(self.ax2.get_xticks(), font)
@@ -275,11 +274,11 @@ class MultiAgentEnv(gym.Env):
                 self.ax2.set_title('Agent 0\'s Buffer Tree')
                 self.fig.suptitle(controller + ' Control Policy of Stationary Agents', fontsize=16)
 
-
-                self.fig.subplots_adjust(top=0.9, left=0.1, right=0.9, bottom=0.12)  # create some space below the plots by increasing the bottom-value
+                self.fig.subplots_adjust(top=0.9, left=0.1, right=0.9,
+                                         bottom=0.12)  # create some space below the plots by increasing the bottom-value
                 self._plot_text = plt.text(x=-3.1, y=-3.3, ha='center', va='center', s="", fontsize=11,
-                                           bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad':5})
-                
+                                           bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 5})
+
                 self.agent_markers1, = self.ax1.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
                 self.agent0_marker1, = self.ax1.plot([], [], 'go')
                 self.agent_markers2, = self.ax2.plot([], [], 'bo')
@@ -291,10 +290,11 @@ class MultiAgentEnv(gym.Env):
                 self.current_path, = self.ax2.plot([], [], 'g')
                 for i in range(self.n_agents):
                     temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.03,
-                                               minshaft=.001, minlength=0)
+                                                 minshaft=.001, minlength=0)
                     self.arrows.append(temp_arrow)
-                    temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1, units='xy',
-                                                       width=.03, minshaft=.001, minlength=0)
+                    temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1,
+                                                        units='xy',
+                                                        width=.03, minshaft=.001, minlength=0)
                     self.failed_arrows.append(temp_failed_arrow)
 
                     temp_line, = self.ax2.plot([], [], 'k')
@@ -315,12 +315,13 @@ class MultiAgentEnv(gym.Env):
                 for i in range(self.n_agents):
                     self.arrows[i].remove()
                     temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.03,
-                                               minshaft=.001, minlength=0)
+                                                 minshaft=.001, minlength=0)
                     self.arrows[i] = temp_arrow
 
                     self.failed_arrows[i].remove()
-                    temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1, units='xy',
-                                                       width=.03, minshaft=.001, minlength=0)
+                    temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1,
+                                                        units='xy',
+                                                        width=.03, minshaft=.001, minlength=0)
                     self.failed_arrows[i] = temp_failed_arrow
 
             for i in range(self.n_agents):
@@ -361,11 +362,12 @@ class MultiAgentEnv(gym.Env):
 
             tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
             succ_communication_percent = self.get_successful_communication_percent()
-            plot_str = 'Mean AoI: {0:2.2f} | Mean Depth: {1:2.2f} | Mean TX Dist: {2:2.2f} | Comm %: {3} | Connected Network: {4}'.format(cost,
-                                                                                                                 tree_depth,
-                                                                                                                 self.avg_transmit_distance,
-                                                                                                                 succ_communication_percent,
-                                                                                                                 self.network_connected)
+            plot_str = 'Mean AoI: {0:2.2f} | Mean Depth: {1:2.2f} | Mean TX Dist: {2:2.2f} | Comm %: {3} | Connected Network: {4}'.format(
+                cost,
+                tree_depth,
+                self.avg_transmit_distance,
+                succ_communication_percent,
+                self.network_connected)
             self._plot_text.set_text(plot_str)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
@@ -592,9 +594,9 @@ class MultiAgentEnv(gym.Env):
             return self.find_depth(cur_count + 1, new_agent, local_buffer)
 
     def is_network_connected(self):
-        if np.nonzero(self.network_buffer[:,:,1] + 1)[0].shape[0] == (self.n_agents ** 2 - self.n_agents):
+        if np.nonzero(self.network_buffer[:, :, 1] + 1)[0].shape[0] == (self.n_agents ** 2 - self.n_agents):
             self.network_connected = True
-    
+
     @staticmethod
     def unpack_obs(obs, ob_space):
         assert tf is not None, "Function unpack_obs() is not available if Tensorflow is not imported."

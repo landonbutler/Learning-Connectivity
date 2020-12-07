@@ -343,9 +343,10 @@ class PPO2(ActorCriticRLModel):
                     td_map)
             writer.add_summary(summary, (update * update_fac))
         else:
-            curr_global_step, policy_loss, value_loss, policy_entropy, approxkl, clipfrac, _ = self.sess.run(
-                [self.global_step, self.pg_loss, self.vf_loss, self.entropy, self.approxkl, self.clipfrac, self._train],
+            curr_lr, curr_global_step, policy_loss, value_loss, policy_entropy, approxkl, clipfrac, _ = self.sess.run(
+                [self.trainer._lr, self.global_step, self.pg_loss, self.vf_loss, self.entropy, self.approxkl, self.clipfrac, self._train],
                 td_map)
+        self.curr_lr = curr_lr
 
         return policy_loss, value_loss, policy_entropy, approxkl, clipfrac
 
@@ -394,7 +395,7 @@ class PPO2(ActorCriticRLModel):
                 self.num_timesteps += self.n_batch
                 self.ep_info_buf.extend(ep_infos)
                 mb_loss_vals = []
-                if states is None:  # nonrecurrent version
+                if states is None:  # non-recurrent version
                     update_fac = self.n_batch // self.nminibatches // self.noptepochs + 1
                     inds = np.arange(self.n_batch)
                     for epoch_num in range(self.noptepochs):
@@ -441,7 +442,7 @@ class PPO2(ActorCriticRLModel):
                     explained_var = explained_variance(values, returns)
                     logger.logkv("serial_timesteps", update * self.n_steps)
                     logger.logkv("n_updates", update)
-                    logger.logkv("learning_rate", lr_now)
+                    logger.logkv("learning_rate", self.curr_lr)
                     logger.logkv("total_timesteps", self.num_timesteps)
                     logger.logkv("fps", fps)
                     logger.logkv("explained_variance", float(explained_var))
