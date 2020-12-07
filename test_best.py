@@ -1,12 +1,12 @@
 import numpy as np
 from progress.bar import Bar
 import gym
-import time
 import aoi_envs
-import imageio
-import argparse
-import os
 import glob
+import aoi_learner
+from aoi_learner.ppo2 import PPO2
+from stable_baselines.common.vec_env import SubprocVecEnv
+from stable_baselines.common.base_class import BaseRLModel
 
 
 def make_env():
@@ -16,13 +16,13 @@ def make_env():
     return my_env
 
 
-def eval_model(env, model, N, render=False):
+def eval_model(env, model, n_episodes):
     """
     Evaluate a model against an environment over N games.
     """
-    results = {'reward': np.zeros(N)}
-    with Bar('Eval', max=N) as bar:
-        for k in range(N):
+    results = {'reward': np.zeros(n_episodes)}
+    with Bar('Eval', max=n_episodes) as bar:
+        for k in range(n_episodes):
             done = False
             obs = env.reset()
             state = None
@@ -40,17 +40,23 @@ def eval_model(env, model, N, render=False):
     return results
 
 
-def save_gif(model_number, timestep, fp, controller):
-    filename = fp + controller + str(model_number) + '.gif'
-    with imageio.get_writer(filename, mode='I', duration=.3) as writer:
-        for i in range(1, timestep+1):
-            fileloc = fp + 'ts' +str(i) +'.png'
-            image = imageio.imread(fileloc)
-            writer.append_data(image)
-            os.remove(fileloc)
+if __name__ == '__main__':
 
+    vec_env = SubprocVecEnv([make_env])
+    env = make_env()
 
-def test_model(model_name, vec_env, env, n_episodes=10):
+    # Specify pre-trained model checkpoint folder.
+    ckpt_dir = 'models/rl_nonlinear_7_2/ckpt'
+    n_episodes = 100
+
+    # Get the path of the last checkpoint.
+    try:
+        ckpt_list = sorted(glob.glob(str(ckpt_dir) + '/*.pkl'))
+    except IndexError:
+        print('Invalid experiment folder name!')
+        raise
+    model_name = ckpt_list[-2]
+
     # load the dictionary of parameters from file
     model_params, params = BaseRLModel._load_from_file(model_name)
     policy_kwargs = model_params['policy_kwargs']
@@ -63,39 +69,13 @@ def test_model(model_name, vec_env, env, n_episodes=10):
 
     # update new model's parameters
     model.load_parameters(params)
-    print('\nTest over ' + str(n_episodes) + ' episodes...')
+    print('Testing ' + model_name + ' over ' + str(n_episodes) + ' episodes...')
     results = eval_model(env, model, n_episodes)
 
     mean_reward = np.mean(results['reward'])
     std_reward = np.std(results['reward'])
-    return mean_reward, std_reward
 
-
-if __name__ == '__main__':
-
-    import aoi_learner
-    from aoi_learner.ppo2 import PPO2
-    from stable_baselines.common.vec_env import SubprocVecEnv
-    from stable_baselines.common.base_class import BaseRLModel
-
-    vec_env = SubprocVecEnv([make_env])
-
-    # Specify pre-trained model checkpoint file.
-    best_reward = -np.Inf
-    best_index = 0
-    env = make_env()
-
-    ckpt_dir = 'models/rl_nonlinear_7_2/ckpt'
-    try:
-        ckpt_list = sorted(glob.glob(str(ckpt_dir) + '/*.pkl'))
-    except IndexError:
-        print('Invalid experiment folder name!')
-        raise
-
-    model_name = ckpt_list[-2]
-    mean_reward, std_reward = test_model(model_name, vec_env, env, 100)
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
-    print('')
 
 
 
