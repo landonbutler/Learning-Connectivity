@@ -65,33 +65,8 @@ class MobileEnv(MultiAgentEnv):
         return self.get_relative_network_buffer_as_dict()
 
     def step(self, attempted_transmissions):
-        """
-        Apply agent actions to update environment.
-        In the future, we could create a nxn continuous action space of transmit powers, and keep max k transmits.
-        :param attempted_transmissions: n-vector of index of who to communicate with
-        :return: Environment observations as a dict representing the graph.
-        """
-        self.attempted_transmissions = attempted_transmissions
-        successful_transmissions = attempted_transmissions
-
-        # Transmit power can be incorporated later
-        if self.is_interference:
-             successful_transmissions, resp_trans  = self.interference(attempted_transmissions) # calculates interference from attempted transmissions
-        self.successful_transmissions = successful_transmissions
-
-        self.current_agents_choice = attempted_transmissions[0]
-
-
-        if self.comm_model is "tw":
-            self.update_buffers(successful_transmissions, resp_trans)
-        else:
-            self.update_buffers(successful_transmissions)
-        # for successful transmissions, updates the buffers of those receiving information
-
         self.move_agents()
-
-        self.timestep = self.timestep + 1
-        return self.get_relative_network_buffer_as_dict(), - self.instant_cost(), False, {}
+        return super().step(attempted_transmissions)
         
     def move_agents(self):
         new_pos = self.x[:,0:2] + self.x[:,2:4] * self.ts_length

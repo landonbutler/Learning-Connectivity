@@ -88,7 +88,7 @@ class MultiAgentEnv(gym.Env):
 
         self.network_connected = False
 
-        self.transmission_probability = 1  # Probability an agent will transmit at a given time step [0,1]
+        self.transmission_probability = .5  # Probability an agent will transmit at a given time step [0,1]
 
         # Push Model: At each time step, agent selects which agent they want to 'push' their buffer to
         # Two-Way Model: An agent requests/pushes their buffer to an agent, with hopes of getting their information back
