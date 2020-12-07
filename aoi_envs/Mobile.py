@@ -1,14 +1,5 @@
 from aoi_envs.MultiAgent import MultiAgentEnv
-import gym
-from gym import spaces, error, utils
-from gym.utils import seeding
 import numpy as np
-import configparser
-from os import path
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import gca
-from graph_nets import utils_np
-import tensorflow as tf
 import networkx as nx
 
 font = {'family': 'sans-serif',
@@ -26,11 +17,11 @@ class MobileEnv(MultiAgentEnv):
         self.ts_length = 0.01
 
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
+        self.dist = None
 
     def reset(self):
         x = np.zeros((self.n_agents, 4))
         x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
-
         x_loc = np.reshape(x[:, 0:2], (self.n_agents, 2, 1))
         a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
         np.fill_diagonal(a_net, np.Inf)
@@ -43,7 +34,6 @@ class MobileEnv(MultiAgentEnv):
 
         self.timestep = 0
         self.x = x
-        self.u = np.zeros((self.n_agents, 2))
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
 
@@ -107,18 +97,18 @@ class MobileEnv(MultiAgentEnv):
         self.network_buffer[:, :, 5] = np.where(np.eye(self.n_agents, dtype=np.bool),
                                                 self.x[:, 3].reshape(self.n_agents, 1), self.network_buffer[:, :, 5])
 
-    def render(self, mode='human', controller="Random", save_plots=False):
+    def render(self, mode='human', controller="Random", save_plots=False, mobile=True):
         super().render(controller=controller, save_plots=save_plots, mobile=True)
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
     def mst_controller(self):
         self.compute_distances()
         self.dist = np.sqrt(self.r2)
-        G = nx.from_numpy_array(self.dist, create_using=nx.Graph())
-        T = nx.minimum_spanning_tree(G)
-        degrees = [val for (node, val) in T.degree()]
+        nx_graph = nx.from_numpy_array(self.dist, create_using=nx.Graph())
+        nx_tree = nx.minimum_spanning_tree(nx_graph)
+        degrees = [val for (node, val) in nx_tree.degree()]
 
-        parent_refs = np.array(self.find_parents(T, [-1] * self.n_agents, degrees))
+        parent_refs = np.array(self.find_parents(nx_tree, [-1] * self.n_agents, degrees))
         self.mst_action = parent_refs.astype(int)
         tx_prob = np.random.uniform(size=(self.n_agents,))
         return np.where(tx_prob < self.transmission_probability, self.mst_action, np.arange(self.n_agents))
