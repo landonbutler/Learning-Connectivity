@@ -2,7 +2,7 @@ import tensorflow as tf
 from graph_nets import graphs
 from stable_baselines.common.policies import ActorCriticPolicy
 import aoi_learner.gnn_models as models
-from aoi_envs.Stationary import StationaryEnv
+from aoi_envs.MultiAgent import MultiAgentEnv
 from gym.spaces import MultiDiscrete
 
 
@@ -33,7 +33,7 @@ class GNNPolicy(ActorCriticPolicy):
         else:
             raise ValueError('Unknown model type!')
 
-        batch_size, n_node, nodes, n_edge, edges, senders, receivers, globs = StationaryEnv.unpack_obs(
+        batch_size, n_node, nodes, n_edge, edges, senders, receivers, globs = MultiAgentEnv.unpack_obs(
             self.processed_obs, ob_space)
 
         agent_graph = graphs.GraphsTuple(
