@@ -46,7 +46,7 @@ if __name__ == '__main__':
     env = make_env()
 
     # Specify pre-trained model checkpoint folder.
-    ckpt_dir = 'models/rl_nonlinear_7_2/ckpt'
+    ckpt_dir = 'models/rl_nonlinear_8_4/ckpt'
     n_episodes = 100
 
     # Get the path of the last checkpoint.
