@@ -100,7 +100,7 @@ if __name__ == '__main__':
         # Specify pre-trained model checkpoint file.
 
         # model_name = 'models/rl_Landon/RL_GNN_5_ENT5_1/RL_GNN_5_ENT5_1.pkl'
-        model_name = 'models/rl_nonlinear_6_0/ckpt/ckpt_090.pkl'
+        model_name = 'models/rl_nonlinear_7_0/ckpt/ckpt_199.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)

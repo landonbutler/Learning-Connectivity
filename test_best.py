@@ -6,6 +6,7 @@ import aoi_envs
 import imageio
 import argparse
 import os
+import glob
 
 
 def make_env():
@@ -84,16 +85,14 @@ if __name__ == '__main__':
     best_index = 0
     env = make_env()
 
-    for i in range(0, 10):
-        # model_name = 'models/rl_Landon/RL_GNN_5_ENT5_1/RL_GNN_5_ENT5_1.pkl'
-        model_name = 'models/rl_nonlinear_6_0/ckpt/ckpt_0' + str(i) + '0.pkl'
+    ckpt_dir = 'models/rl_nonlinear_7_2/ckpt'
+    try:
+        ckpt_list = sorted(glob.glob(str(ckpt_dir) + '/*.pkl'))
+    except IndexError:
+        print('Invalid experiment folder name!')
+        raise
 
-        mean_reward, std_reward = test_model(model_name, vec_env, env)
-        print(mean_reward)
-        if mean_reward > best_reward:
-            best_index = i
-
-    model_name = 'models/rl_nonlinear_6_0/ckpt/ckpt_0' + str(best_index) + '0.pkl'
+    model_name = ckpt_list[-2]
     mean_reward, std_reward = test_model(model_name, vec_env, env, 100)
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
     print('')
