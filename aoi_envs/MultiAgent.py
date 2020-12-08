@@ -71,7 +71,7 @@ class MultiAgentEnv(gym.Env):
         self.r2 = None
         self.saved_pos = None
         self.carrier_frequency_ghz = 2.4
-        self.min_SINR = -10  # 10-15 is consider unreliable, cited paper uses -4
+        self.min_SINR = -4  # 10-15 is consider unreliable, cited paper uses -4
         self.gaussian_noise_dBm = -90
         self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
         self.path_loss_exponent = 2
@@ -88,7 +88,7 @@ class MultiAgentEnv(gym.Env):
 
         self.network_connected = False
 
-        self.transmission_probability = .5  # Probability an agent will transmit at a given time step [0,1]
+        self.transmission_probability = .33  # Probability an agent will transmit at a given time step [0,1]
 
         # Push Model: At each time step, agent selects which agent they want to 'push' their buffer to
         # Two-Way Model: An agent requests/pushes their buffer to an agent, with hopes of getting their information back

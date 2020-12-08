@@ -102,7 +102,7 @@ if __name__ == '__main__':
         # Specify pre-trained model checkpoint file.
 
         # model_name = 'models/rl_Landon/RL_GNN_5_ENT5_1/RL_GNN_5_ENT5_1.pkl'
-        model_name = 'models/rl_nonlinear_7_2/ckpt/ckpt_192.pkl'
+        model_name = 'models/rl_nonlinear_7_1/ckpt/ckpt_199.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)
@@ -126,7 +126,7 @@ if __name__ == '__main__':
         print('\nTest over 10  episodes live visualization...')
         eval_model(env, model, 10, render=True)
 
-    n_episodes = 20
+    n_episodes = 100
     print('\nTest over ' + str(n_episodes) + ' episodes...')
     results = eval_model(env, model, n_episodes)
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(np.mean(results['reward']), np.std(results['reward'])))

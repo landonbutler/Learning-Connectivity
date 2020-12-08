@@ -20,7 +20,7 @@ class MobileEnv(MultiAgentEnv):
     def __init__(self):
         super().__init__()
 
-        self.constant_v = 10
+        self.constant_v = 1.0
         self.ts_length = 0.01
 
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
@@ -96,4 +96,3 @@ class MobileEnv(MultiAgentEnv):
         self.mst_action = parent_refs.astype(int)
         tx_prob = np.random.uniform(size=(self.n_agents,))
         return np.where(tx_prob < self.transmission_probability, self.mst_action, np.arange(self.n_agents))
-    
