@@ -360,11 +360,11 @@ class MultiAgentEnv(gym.Env):
 
             cost = self.compute_current_aoi()
 
-            tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
+            mean_hops = self.find_tree_hops()
             succ_communication_percent = self.get_successful_communication_percent()
-            plot_str = 'Mean AoI: {0:2.2f} | Mean Depth: {1:2.2f} | Mean TX Dist: {2:2.2f} | Comm %: {3} | Connected Network: {4}'.format(
+            plot_str = 'Mean AoI: {0:2.2f} | Mean Hops: {1:2.2f} | Mean TX Dist: {2:2.2f} | Comm %: {3} | Connected Network: {4}'.format(
                 cost,
-                tree_depth,
+                mean_hops,
                 self.avg_transmit_distance,
                 succ_communication_percent,
                 self.network_connected)
@@ -580,18 +580,20 @@ class MultiAgentEnv(gym.Env):
                     # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
         return transmit_distance
 
-    def find_tree_depth(self, local_buffer):
+    def find_tree_hops(self):
         total_depth = 0
         for i in range(self.n_agents):
-            total_depth += self.find_depth(0, i, local_buffer)
-        return total_depth / self.n_agents
+            local_buffer = self.network_buffer[i, :, 1]
+            for j in range(self.n_agents):
+                total_depth += self.find_hops(-1, j, local_buffer)
+        return total_depth / (self.n_agents ** 2)
 
-    def find_depth(self, cur_count, agent, local_buffer):
+    def find_hops(self, cur_count, agent, local_buffer):
         if agent == -1:
             return cur_count
         else:
             new_agent = int(local_buffer[int(agent)])
-            return self.find_depth(cur_count + 1, new_agent, local_buffer)
+            return self.find_hops(cur_count + 1, new_agent, local_buffer)
 
     def is_network_connected(self):
         if np.nonzero(self.network_buffer[:, :, 1] + 1)[0].shape[0] == (self.n_agents ** 2 - self.n_agents):
