@@ -31,7 +31,7 @@ class MultiAgentEnv(gym.Env):
 
         # default problem parameters
         self.n_agents = 20  # int(config['network_size'])
-        self.r_max = 2.5  # 10.0  #  float(config['max_rad_init'])
+        self.r_max = 25.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
         # initialize state matrices
@@ -88,7 +88,7 @@ class MultiAgentEnv(gym.Env):
 
         self.network_connected = False
 
-        self.transmission_probability = .33  # Probability an agent will transmit at a given time step [0,1]
+        # self.transmission_probability = .33  # Probability an agent will transmit at a given time step [0,1]
 
         # Push Model: At each time step, agent selects which agent they want to 'push' their buffer to
         # Two-Way Model: An agent requests/pushes their buffer to an agent, with hopes of getting their information back
@@ -276,7 +276,7 @@ class MultiAgentEnv(gym.Env):
 
                 self.fig.subplots_adjust(top=0.9, left=0.1, right=0.9,
                                          bottom=0.12)  # create some space below the plots by increasing the bottom-value
-                self._plot_text = plt.text(x=-3.1, y=-3.3, ha='center', va='center', s="", fontsize=11,
+                self._plot_text = plt.text(x=-self.r_max, y=-self.r_max-5, ha='center', va='center', s="", fontsize=11,
                                            bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 5})
 
                 self.agent_markers1, = self.ax1.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
@@ -479,7 +479,7 @@ class MultiAgentEnv(gym.Env):
         return successful_transmissions
 
     # Given current buffer states, will pick agent with oldest AoI to communicate with
-    def greedy_controller(self, selective_comms=True):
+    def greedy_controller(self, selective_comms=True, transmission_probability=0.1):
         comm_choice = np.zeros((self.n_agents))
         for i in range(self.n_agents):
             my_buffer_ts = self.network_buffer[i, :, 0]
@@ -489,10 +489,10 @@ class MultiAgentEnv(gym.Env):
             return comm_choice.astype(int)
         else:
             tx_prob = np.random.uniform(size=(self.n_agents,))
-            return np.where(tx_prob < self.transmission_probability, comm_choice.astype(int), np.arange(self.n_agents))
+            return np.where(tx_prob < transmission_probability, comm_choice.astype(int), np.arange(self.n_agents))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self, selective_comms=True):
+    def mst_controller(self, selective_comms=True, transmission_probability=0.33):
         if self.mst_action is None:
             self.compute_distances()
             self.dist = np.sqrt(self.r2)
@@ -507,16 +507,16 @@ class MultiAgentEnv(gym.Env):
             return self.mst_action
         else:
             tx_prob = np.random.uniform(size=(self.n_agents,))
-            return np.where(tx_prob < self.transmission_probability, self.mst_action, np.arange(self.n_agents))
+            return np.where(tx_prob < transmission_probability, self.mst_action, np.arange(self.n_agents))
 
     # Chooses a random action from the action space
-    def random_controller(self):
+    def random_controller(self, transmission_probability=0.1):
         attempted_trans = self.action_space.sample()
         tx_prob = np.random.uniform(size=(self.n_agents,))
-        return np.where(tx_prob < self.transmission_probability, attempted_trans, np.arange(self.n_agents))
+        return np.where(tx_prob < transmission_probability, attempted_trans, np.arange(self.n_agents))
 
     # 33% MST, 33% Greedy, 33% Random
-    def neopolitan_controller(self, selective_comms=True):
+    def neopolitan_controller(self, selective_comms=True, transmission_probability=0.33):
         random_action = self.action_space.sample()
         mst_action = self.mst_controller(False)
         greedy_action = self.greedy_controller(False)
@@ -527,7 +527,7 @@ class MultiAgentEnv(gym.Env):
             return neopolitan_action
         else:
             tx_prob = np.random.uniform(size=(self.n_agents,))
-            return np.where(tx_prob < self.transmission_probability, neopolitan_action, np.arange(self.n_agents))
+            return np.where(tx_prob < transmission_probability, neopolitan_action, np.arange(self.n_agents))
 
     def find_parents(self, T, parent_ref, degrees):
         leaves = [i for i in range(self.n_agents) if degrees[i] == 1]
