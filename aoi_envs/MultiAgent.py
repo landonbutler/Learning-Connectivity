@@ -493,7 +493,7 @@ class MultiAgentEnv(gym.Env):
             return np.where(tx_prob < transmission_probability, comm_choice.astype(int), np.arange(self.n_agents))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self, selective_comms=True, transmission_probability=0.1):
+    def mst_controller(self, selective_comms=True, transmission_probability=0.33):
         if self.mst_action is None:
             self.compute_distances()
             self.dist = np.sqrt(self.r2)
