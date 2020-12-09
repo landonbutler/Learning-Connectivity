@@ -276,7 +276,7 @@ class MultiAgentEnv(gym.Env):
 
                 self.fig.subplots_adjust(top=0.9, left=0.1, right=0.9,
                                          bottom=0.12)  # create some space below the plots by increasing the bottom-value
-                self._plot_text = plt.text(x=-self.r_max, y=-self.r_max-5, ha='center', va='center', s="", fontsize=11,
+                self._plot_text = plt.text(x=-1.21 * self.r_max, y=-1.28 * self.r_max, ha='center', va='center', s="", fontsize=11,
                                            bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 5})
 
                 self.agent_markers1, = self.ax1.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
@@ -289,12 +289,12 @@ class MultiAgentEnv(gym.Env):
                 self.paths = []
                 self.current_path, = self.ax2.plot([], [], 'g')
                 for i in range(self.n_agents):
-                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.03,
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * self.r_max,
                                                  minshaft=.001, minlength=0)
                     self.arrows.append(temp_arrow)
                     temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1,
                                                         units='xy',
-                                                        width=.03, minshaft=.001, minlength=0)
+                                                        width=.015 * self.r_max, minshaft=.001, minlength=0)
                     self.failed_arrows.append(temp_failed_arrow)
 
                     temp_line, = self.ax2.plot([], [], 'k')
@@ -314,14 +314,14 @@ class MultiAgentEnv(gym.Env):
             if mobile:
                 for i in range(self.n_agents):
                     self.arrows[i].remove()
-                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.03,
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * self.r_max,
                                                  minshaft=.001, minlength=0)
                     self.arrows[i] = temp_arrow
 
                     self.failed_arrows[i].remove()
                     temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1,
                                                         units='xy',
-                                                        width=.03, minshaft=.001, minlength=0)
+                                                        width=.015 * self.r_max, minshaft=.001, minlength=0)
                     self.failed_arrows[i] = temp_failed_arrow
 
             for i in range(self.n_agents):
