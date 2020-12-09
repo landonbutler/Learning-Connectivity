@@ -221,7 +221,6 @@ class MultiAgentEnv(gym.Env):
         np.fill_diagonal(a_net, np.Inf)
 
         self.mst_action = None
-        self.network_connected = False
 
         self.timestep = 0
         if load_positions:
@@ -494,9 +493,8 @@ class MultiAgentEnv(gym.Env):
             return np.where(tx_prob < transmission_probability, comm_choice.astype(int), np.arange(self.n_agents))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self, selective_comms=True, transmission_probability=0.1, mobile = False):
-        
-        if mobile or self.mst_action is None:
+    def mst_controller(self, selective_comms=True, transmission_probability=0.33):
+        if self.mst_action is None:
             self.compute_distances()
             self.dist = np.sqrt(self.r2)
             G = nx.from_numpy_array(self.dist, create_using=nx.Graph())
@@ -521,13 +519,16 @@ class MultiAgentEnv(gym.Env):
     # 33% MST, 33% Greedy, 33% Random
     def neopolitan_controller(self, selective_comms=True, transmission_probability=0.33):
         random_action = self.action_space.sample()
-        mst_action = self.mst_controller()
-        greedy_action = self.greedy_controller()
+        mst_action = self.mst_controller(False)
+        greedy_action = self.greedy_controller(False)
 
         rand_3 = np.random.randint(0, 3, size=(self.n_agents,))
         neopolitan_action = np.where(rand_3 == 0, random_action, (np.where(rand_3 == 1, mst_action, greedy_action)))
-        tx_prob = np.random.uniform(size=(self.n_agents,))
-        return np.where(tx_prob < transmission_probability, neopolitan_action, np.arange(self.n_agents))
+        if not selective_comms:
+            return neopolitan_action
+        else:
+            tx_prob = np.random.uniform(size=(self.n_agents,))
+            return np.where(tx_prob < transmission_probability, neopolitan_action, np.arange(self.n_agents))
 
     def find_parents(self, T, parent_ref, degrees):
         leaves = [i for i in range(self.n_agents) if degrees[i] == 1]
@@ -598,13 +599,6 @@ class MultiAgentEnv(gym.Env):
     def is_network_connected(self):
         if np.nonzero(self.network_buffer[:, :, 1] + 1)[0].shape[0] == (self.n_agents ** 2 - self.n_agents):
             self.network_connected = True
-
-    def noise_floor_distance(self):
-        power_mW = 10 ** (self.tx_power / 10)
-        snr_term = np.divide(power_mW, self.gaussian_noise_mW * np.power(10, self.min_SINR / 10))
-        right_exp_term = (10 * np.log10(snr_term)) - (20 * np.log10(self.carrier_frequency_ghz * 10 ** 9)) + 147.55
-        exponent = np.divide(1, 10 * self.path_loss_exponent) * right_exp_term
-        return np.power(10, exponent)
 
     @staticmethod
     def unpack_obs(obs, ob_space):
