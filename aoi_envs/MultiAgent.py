@@ -233,7 +233,7 @@ class MultiAgentEnv(gym.Env):
         self.network_buffer[:, :, 3] = np.where(np.eye(self.n_agents, dtype=np.bool),
                                                 self.x[:, 1].reshape(self.n_agents, 1), self.network_buffer[:, :, 3])
         self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0,
-                                                -100)  # motivates agents to get information in the first time step
+                                                -10)  # motivates agents to get information in the first time step
         if self.fig != None:
             plt.close(self.fig)
         self.fig = None
