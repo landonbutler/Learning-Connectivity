@@ -9,6 +9,7 @@ from matplotlib.pyplot import gca
 from graph_nets import utils_np
 import tensorflow as tf
 import networkx as nx
+import math
 
 font = {'family': 'sans-serif',
         'weight': 'bold',
@@ -31,7 +32,7 @@ class MultiAgentEnv(gym.Env):
 
         # default problem parameters
         self.n_agents = 20  # int(config['network_size'])
-        self.r_max = 25.0  # 10.0  #  float(config['max_rad_init'])
+        self.r_max = 25.0 * math.sqrt(4)  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
         # initialize state matrices
@@ -492,7 +493,7 @@ class MultiAgentEnv(gym.Env):
             return np.where(tx_prob < transmission_probability, comm_choice.astype(int), np.arange(self.n_agents))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self, selective_comms=True, transmission_probability=0.33):
+    def mst_controller(self, selective_comms=True, transmission_probability=0.1):
         if self.mst_action is None:
             self.compute_distances()
             self.dist = np.sqrt(self.r2)
