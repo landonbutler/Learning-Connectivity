@@ -80,15 +80,6 @@ class MobileEnv(MultiAgentEnv):
     def render(self, mode='human', controller="Random", save_plots=False):
         super().render(controller=controller, save_plots=save_plots, mobile=True)
 
-    # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self):
-        self.compute_distances()
-        self.dist = np.sqrt(self.r2)
-        G = nx.from_numpy_array(self.dist, create_using=nx.Graph())
-        T = nx.minimum_spanning_tree(G)
-        degrees = [val for (node, val) in T.degree()]
-
-        parent_refs = np.array(self.find_parents(T, [-1] * self.n_agents, degrees))
-        self.mst_action = parent_refs.astype(int)
-        tx_prob = np.random.uniform(size=(self.n_agents,))
-        return np.where(tx_prob < self.transmission_probability, self.mst_action, np.arange(self.n_agents))
+    def mst_controller(self, selective_comms=True, transmission_probability=0.1, mobile = True):
+        return super().mst_controller(selective_comms=selective_comms, transmission_probability=transmission_probability, mobile=mobile)
+    
