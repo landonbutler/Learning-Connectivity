@@ -221,6 +221,7 @@ class MultiAgentEnv(gym.Env):
         np.fill_diagonal(a_net, np.Inf)
 
         self.mst_action = None
+        self.network_connected = False
 
         self.timestep = 0
         if load_positions:
@@ -599,6 +600,13 @@ class MultiAgentEnv(gym.Env):
     def is_network_connected(self):
         if np.nonzero(self.network_buffer[:, :, 1] + 1)[0].shape[0] == (self.n_agents ** 2 - self.n_agents):
             self.network_connected = True
+
+    def noise_floor_distance(self):
+        power_mW = 10 ** (self.tx_power / 10)
+        snr_term = np.divide(power_mW, self.gaussian_noise_mW * np.power(10, self.min_SINR / 10))
+        right_exp_term = (10 * np.log10(snr_term)) - (20 * np.log10(self.carrier_frequency_ghz * 10 ** 9)) + 147.55
+        exponent = np.divide(1, 10 * self.path_loss_exponent) * right_exp_term
+        return np.power(10, exponent)
 
     @staticmethod
     def unpack_obs(obs, ob_space):
