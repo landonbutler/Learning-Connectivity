@@ -80,7 +80,7 @@ class MultiAgentEnv(gym.Env):
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         self.timestep = 0
-        self.avg_transmit_distance = 0.1
+        self.avg_transmit_distance = 0
 
         self.symmetric_comms = True
         self.is_interference = True
@@ -271,7 +271,12 @@ class MultiAgentEnv(gym.Env):
                 self.ax2.set_yticklabels(self.ax2.get_yticks(), font)
                 self.ax1.set_title('Network Interference')
                 self.ax2.set_title('Agent 0\'s Buffer Tree')
-                self.fig.suptitle(controller + ' Control Policy of Stationary Agents', fontsize=16)
+
+                if self.mobile_agents:
+                    type_agents = "Mobile"
+                else:
+                    type_agents = "Stationary"
+                self.fig.suptitle('{0} Control Policy of {1} Agents'.format(controller, type_agents), fontsize=16)
 
                 self.fig.subplots_adjust(top=0.9, left=0.1, right=0.9,
                                          bottom=0.12)  # create some space below the plots by increasing the bottom-value
@@ -322,7 +327,8 @@ class MultiAgentEnv(gym.Env):
                                                         units='xy',
                                                         width=.015 * self.r_max, minshaft=.001, minlength=0)
                     self.failed_arrows[i] = temp_failed_arrow
-
+            
+            transmit_distances = []
             for i in range(self.n_agents):
                 j = int(self.network_buffer[0, i, 1])
                 if j != -1:
@@ -339,7 +345,7 @@ class MultiAgentEnv(gym.Env):
 
                 if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
                     # agent chose to attempt transmission
-
+                    transmit_distances.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
                     # agent chooses to communicate with j
                     j = self.attempted_transmissions[i]
 
@@ -358,7 +364,10 @@ class MultiAgentEnv(gym.Env):
                     self.failed_arrows[i].set_UVC(0, 0)
 
             cost = self.compute_current_aoi()
-
+            if len(transmit_distances) is 0:
+                self.avg_transmit_distance = 0.0
+            else:
+                self.avg_transmit_distance = np.mean(transmit_distances)
             mean_hops = self.find_tree_hops()
             succ_communication_percent = self.get_successful_communication_percent()
             plot_str = 'Mean AoI: {0:2.2f} | Mean Hops: {1:2.2f} | Mean TX Dist: {2:2.2f} | Comm %: {3} | Connected Network: {4}'.format(
@@ -545,22 +554,19 @@ class MultiAgentEnv(gym.Env):
         assert (self.comm_model is "push" or self.comm_model is "tw")
 
         if self.comm_model is "push":
-            transmit_distance = self.update_buffers_push(transmission_idx)
+            self.update_buffers_push(transmission_idx)
 
         elif self.comm_model is "tw":
             # Two-Way Communications can be modeled as a sequence of a push and a response
-            transmit_distance_push = self.update_buffers_push(transmission_idx)
-            transmit_distance_response = self.update_buffers_push(response_idx, push=False)
-            transmit_distance = transmit_distance_push + transmit_distance_response
+            self.update_buffers_push(transmission_idx)
+            self.update_buffers_push(response_idx, push=False)
 
         # my information is updated
         self.network_buffer[:, :, 0] += np.eye(self.n_agents)
-        self.avg_transmit_distance = np.sum(np.power(transmit_distance, 3)) / self.n_agents
         # TODO divide by number of transmissions per agent
 
     def update_buffers_push(self, transmission_idx, push=True):
         # TODO : Convert this to NumPy vector operations
-        transmit_distance = []
         for i in range(self.n_agents):
             if push:
                 agent_idxes = [transmission_idx[i]]
@@ -569,15 +575,13 @@ class MultiAgentEnv(gym.Env):
 
             # j is the agent that will receive i's buffer
             for j in agent_idxes:
-                if i != j:
-                    transmit_distance.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
+                if i != j:         
                     for k in range(self.n_agents):
                         # if received info is newer than known info
                         if self.network_buffer[i, k, 0] > self.network_buffer[j, k, 0]:
                             self.network_buffer[j, k, :] = self.network_buffer[i, k, :]
                     self.network_buffer[j, i, 1] = j
                     # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
-        return transmit_distance
 
     def find_tree_hops(self):
         total_depth = 0
