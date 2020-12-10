@@ -8,7 +8,7 @@ class MobileEnv(MultiAgentEnv):
 
     def __init__(self):
         super().__init__()
-        self.constant_v = 0.0
+        self.constant_v = 1.0
         self.ts_length = 0.01
 
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
