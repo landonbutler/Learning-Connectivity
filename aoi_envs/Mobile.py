@@ -26,7 +26,6 @@ class MobileEnv(MultiAgentEnv):
                                                 self.x[:, 2].reshape(self.n_agents, 1), self.network_buffer[:, :, 4])
         self.network_buffer[:, :, 5] = np.where(np.eye(self.n_agents, dtype=np.bool),
                                                 self.x[:, 3].reshape(self.n_agents, 1), self.network_buffer[:, :, 5])
-        self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0, -100)
         return self.get_relative_network_buffer_as_dict()
 
     def step(self, attempted_transmissions):
