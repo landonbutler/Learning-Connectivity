@@ -84,7 +84,6 @@ class MultiAgentEnv(gym.Env):
 
         self.symmetric_comms = True
         self.is_interference = True
-        self.current_agents_choice = -1
         self.mst_action = None
 
         self.network_connected = False
@@ -139,8 +138,6 @@ class MultiAgentEnv(gym.Env):
             successful_transmissions, resp_trans = self.interference(
                 attempted_transmissions)  # calculates interference from attempted transmissions
         self.successful_transmissions = successful_transmissions
-
-        self.current_agents_choice = self.successful_transmissions[0]
 
         if not self.network_connected:
             self.is_network_connected()
@@ -291,7 +288,6 @@ class MultiAgentEnv(gym.Env):
                 self.arrows = []
                 self.failed_arrows = []
                 self.paths = []
-                self.current_path, = self.ax2.plot([], [], 'g')
                 for i in range(self.n_agents):
                     temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * self.r_max,
                                                  minshaft=.001, minlength=0)
@@ -334,14 +330,10 @@ class MultiAgentEnv(gym.Env):
                 if j != -1:
                     self.paths[i].set_xdata([self.x[i, 0], self.x[j, 0]])
                     self.paths[i].set_ydata([self.x[i, 1], self.x[j, 1]])
-                    if i == self.current_agents_choice:
-                        self.current_path.set_xdata([self.x[i, 0], self.x[0, 0]])
-                        self.current_path.set_ydata([self.x[i, 1], self.x[0, 1]])
+
                 else:
                     self.paths[i].set_xdata([])
                     self.paths[i].set_ydata([])
-                    self.current_path.set_xdata([])
-                    self.current_path.set_ydata([])
 
                 if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
                     # agent chose to attempt transmission
