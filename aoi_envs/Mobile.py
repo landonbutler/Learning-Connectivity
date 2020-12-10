@@ -1,9 +1,6 @@
 from aoi_envs.MultiAgent import MultiAgentEnv
 import numpy as np
 
-font = {'family': 'sans-serif',
-        'weight': 'bold',
-        'size': 14}
 N_NODE_FEAT = 6
 
 
@@ -18,7 +15,6 @@ class MobileEnv(MultiAgentEnv):
         self.recompute_solution = True
         self.mobile_agents = True
         self.x = np.zeros((self.n_agents, self.n_features))
-
 
     def reset(self):
         super().reset()
