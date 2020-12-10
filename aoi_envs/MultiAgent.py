@@ -36,7 +36,7 @@ class MultiAgentEnv(gym.Env):
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
         # initialize state matrices
-        self.x = None
+        self.x = np.zeros((self.n_agents, self.n_features))
 
         self.action_space = spaces.MultiDiscrete([self.n_agents] * self.n_agents)
         # each agent has their own action space of a n_agent vector of weights
@@ -88,6 +88,8 @@ class MultiAgentEnv(gym.Env):
         self.mst_action = None
 
         self.network_connected = False
+        self.recompute_solution = False
+        self.mobile_agents = False
 
         # self.transmission_probability = .33  # Probability an agent will transmit at a given time step [0,1]
 
@@ -209,16 +211,13 @@ class MultiAgentEnv(gym.Env):
         return data_dict
 
     def reset(self):
-        x = np.zeros((self.n_agents, 2))
-        # length = np.random.uniform(0, self.r_max, size=(self.n_agents,))
-        # angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
-        # x[:, 0] = length * np.cos(angle)
-        # x[:, 1] = length * np.sin(angle)
-        x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
 
-        x_loc = np.reshape(x, (self.n_agents, 2, 1))
-        a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
-        np.fill_diagonal(a_net, np.Inf)
+        self.network_connected = False
+        self.x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
+
+        # x_loc = np.reshape(self.x, (self.n_agents, 2, 1))
+        # a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
+        # np.fill_diagonal(a_net, np.Inf)
 
         self.mst_action = None
 
@@ -226,10 +225,8 @@ class MultiAgentEnv(gym.Env):
         if load_positions:
             self.x = np.load("saved_positions.npy")
         elif save_positions:
-            np.save("saved_positions", x)
-            self.x = x
-        else:
-            self.x = x
+            np.save("saved_positions", self.x)
+
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         # self.network_buffer[:, :, 0] = -100  # motivates agents to get information in the first time step
         self.network_buffer[:, :, 1] = -1  # no parent references yet
@@ -251,7 +248,7 @@ class MultiAgentEnv(gym.Env):
             self.compute_distances()
         return self.get_relative_network_buffer_as_dict()
 
-    def render(self, mode='human', save_plots=False, controller="Random", mobile=False):
+    def render(self, mode='human', save_plots=False, controller="Random"):
         """
         Render the environment with agents as points in 2D space
         """
@@ -301,7 +298,7 @@ class MultiAgentEnv(gym.Env):
                     temp_line, = self.ax2.plot([], [], 'k')
                     self.paths.append(temp_line)
 
-            if mobile or self.timestep <= 1:
+            if self.mobile_agents or self.timestep <= 1:
                 # Plot the agent locations at the start of the episode
                 self.agent_markers1.set_xdata(self.x[:, 0])
                 self.agent_markers1.set_ydata(self.x[:, 1])
@@ -312,7 +309,7 @@ class MultiAgentEnv(gym.Env):
                 self.agent0_marker2.set_xdata(self.x[0, 0])
                 self.agent0_marker2.set_ydata(self.x[0, 1])
 
-            if mobile:
+            if self.mobile_agents:
                 for i in range(self.n_agents):
                     self.arrows[i].remove()
                     temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * self.r_max,
@@ -494,7 +491,7 @@ class MultiAgentEnv(gym.Env):
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
     def mst_controller(self, selective_comms=True, transmission_probability=0.33):
-        if self.mst_action is None:
+        if self.recompute_solution or self.mst_action is None:
             self.compute_distances()
             self.dist = np.sqrt(self.r2)
             G = nx.from_numpy_array(self.dist, create_using=nx.Graph())
