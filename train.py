@@ -15,10 +15,6 @@ from aoi_learner.ppo2 import PPO2
 from aoi_learner.utils import ckpt_file, callback
 from test_all import find_best_model
 
-parser = argparse.ArgumentParser(description="My parser")
-parser.add_argument('-b', '--best', dest='find_best_ckpt', action='store_true')
-parser.set_defaults(find_best_ckpt=False)
-args = parser.parse_args()
 
 def train_helper(env_param, test_env_param, train_param, policy_fn, policy_param, directory, env=None, test_env=None):
     save_dir = Path(directory)
@@ -163,20 +159,17 @@ def main():
         env = None
         test_env = None
         for section_name in config.sections():
-            print(section_name)
             env, test_env = run_experiment(config[section_name], section_name, env, test_env)
-            if args.find_best_ckpt:
-                Path('models/' + config[section_name].get('name') + section_name)
-                save_dir = Path(directory)
-                ckpt_dir = save_dir / 'ckpt'
-                find_best_model(ckpt_dir)
-    else:
-        run_experiment(config[config.default_section])
-        if args.find_best_ckpt:
-            Path('models/' + config[config.default_section].get('name') + section_name)
+            directory = Path('models/' + config[section_name].get('name') + section_name)
             save_dir = Path(directory)
             ckpt_dir = save_dir / 'ckpt'
             find_best_model(ckpt_dir)
+    else:
+        run_experiment(config[config.default_section])
+        directory = Path('models/' + config[config.default_section].get('name') + section_name)
+        save_dir = Path(directory)
+        ckpt_dir = save_dir / 'ckpt'
+        find_best_model(ckpt_dir)
 
 if __name__ == '__main__':
     main()
