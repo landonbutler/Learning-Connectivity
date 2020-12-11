@@ -5,6 +5,7 @@ import aoi_envs
 import glob
 import aoi_learner
 import os
+import sys
 from aoi_learner.ppo2 import PPO2
 from stable_baselines.common.vec_env import SubprocVecEnv
 from stable_baselines.common.base_class import BaseRLModel
@@ -55,8 +56,12 @@ def find_best_model(all_ckpt_dir):
         raise
     if len(ckpt_list) is 0:
         print('Invalid experiment folder name!')
-        raise
+        raise IndexError('Invalid experiment folder name!')
     rewards = []
+
+    # Test every 10th checkpoint.
+    ckpt_list = ckpt_list[0::10]
+  
     for ckpt in ckpt_list:
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(ckpt)
@@ -93,7 +98,7 @@ def find_best_model(all_ckpt_dir):
     best_n_episodes = 100
     # update new model's parameters
     best_model.load_parameters(best_params)
-    print('Testing ' + best_ckpt + ' over ' + str(n_episodes) + ' episodes...')
+    print('Testing ' + best_ckpt + ' over ' + str(best_n_episodes) + ' episodes...')
     results = eval_model(env, model, best_n_episodes)
 
     mean_reward = np.mean(results['reward'])
@@ -107,5 +112,5 @@ def find_best_model(all_ckpt_dir):
 
 if __name__ == '__main__':
     # Specify pre-trained model checkpoint folder (containing all checkpoints).
-    all_ckpt_dir = 'models/rl_Landon/RL_GNN_25_K0/ckpt'
+    all_ckpt_dir = 'models/' + sys.argv[1] + '/ckpt'
     find_best_model(all_ckpt_dir)
