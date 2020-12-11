@@ -15,15 +15,18 @@ parser.add_argument('-n', '--neopolitan', dest='neopolitan', action='store_true'
 parser.add_argument('-v', '--visualize', dest='visualize', action='store_true')
 parser.add_argument('-l', '--learner', dest='learner', action='store_true')
 parser.add_argument('-me', '--mobileenv', dest='mobile_env', action='store_true')
+parser.add_argument('-sk', '--stationaryknown', dest='stationary_known_env', action='store_true')
 parser.add_argument('-gif', '--gif', dest='gif', action='store_true')
 
-parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, mobile_env=False, gif=False)
+parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, mobile_env=False, stationary_known_env=False, gif=False)
 args = parser.parse_args()
 
 
 def make_env():
     if args.mobile_env:
         env_name = "MobileEnv-v0"
+    elif args.stationary_known_env:
+        env_name = "StationaryKnownEnv-v0"
     else:
         env_name = "StationaryEnv-v0"
     my_env = gym.make(env_name)

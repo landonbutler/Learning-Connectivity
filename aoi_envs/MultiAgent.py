@@ -31,7 +31,7 @@ class MultiAgentEnv(gym.Env):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
-        self.n_agents = 20  # int(config['network_size'])
+        self.n_agents = 3  # int(config['network_size'])
         self.r_max = 25.0 * math.sqrt(4)  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
@@ -89,6 +89,8 @@ class MultiAgentEnv(gym.Env):
         self.network_connected = False
         self.recompute_solution = False
         self.mobile_agents = False
+
+        self.known_initial_positions = False
 
         # self.transmission_probability = .33  # Probability an agent will transmit at a given time step [0,1]
 
@@ -226,17 +228,19 @@ class MultiAgentEnv(gym.Env):
             np.save("saved_positions", self.x)
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
-        # self.network_buffer[:, :, 0] = -100  # motivates agents to get information in the first time step
-        self.network_buffer[:, :, 1] = -1  # no parent references yet
-
-        # TODO test this
-        # If the agents were mobile, we need to add this code into the step() function too
-        self.network_buffer[:, :, 2] = np.where(np.eye(self.n_agents, dtype=np.bool),
+        if self.known_initial_positions:
+           self.network_buffer[:, :, 2] = self.x[:,0]
+           self.network_buffer[:, :, 3] = self.x[:,1]
+        else:
+           self.network_buffer[:, :, 2] = np.where(np.eye(self.n_agents, dtype=np.bool),
                                                 self.x[:, 0].reshape(self.n_agents, 1), self.network_buffer[:, :, 2])
-        self.network_buffer[:, :, 3] = np.where(np.eye(self.n_agents, dtype=np.bool),
+           self.network_buffer[:, :, 3] = np.where(np.eye(self.n_agents, dtype=np.bool),
                                                 self.x[:, 1].reshape(self.n_agents, 1), self.network_buffer[:, :, 3])
+
+        self.network_buffer[:, :, 1] = -1  # no parent references yet
         self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0, PENALTY)
         # motivates agents to get information in the first time step
+
 
         if self.fig != None:
             plt.close(self.fig)
