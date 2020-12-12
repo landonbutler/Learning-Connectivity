@@ -31,7 +31,7 @@ class MultiAgentEnv(gym.Env):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
-        self.n_agents = 3  # int(config['network_size'])
+        self.n_agents = 30  # int(config['network_size'])
         self.r_max = 25.0 * math.sqrt(4)  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
@@ -89,6 +89,9 @@ class MultiAgentEnv(gym.Env):
         self.network_connected = False
         self.recompute_solution = False
         self.mobile_agents = False
+
+        self.flocking = False
+        self.biased_velocities = False
 
         self.known_initial_positions = False
 
@@ -163,8 +166,8 @@ class MultiAgentEnv(gym.Env):
         relative_network_buffer[:, :, 0] = self.network_buffer[:, :, 0] - self.timestep
 
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
-        relative_network_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1,
-                                                                                                     2)
+        relative_network_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1, 2)
+        
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
         return self.map_to_observation_space(relative_network_buffer)
 
@@ -261,10 +264,15 @@ class MultiAgentEnv(gym.Env):
                 self.ax1.set_aspect('equal')
                 self.ax2.set_aspect('equal')
 
-                self.ax1.set_ylim(-1.0 * self.r_max - 0.075, 1.0 * self.r_max + 0.075)
-                self.ax1.set_xlim(-1.0 * self.r_max - 0.075, 1.0 * self.r_max + 0.075)
-                self.ax2.set_ylim(-1.0 * self.r_max - 0.075, 1.0 * self.r_max + 0.075)
-                self.ax2.set_xlim(-1.0 * self.r_max - 0.075, 1.0 * self.r_max + 0.075)
+                if self.flocking:
+                    render_radius = 2 * self.r_max
+                else:
+                    render_radius = self.r_max
+
+                self.ax1.set_ylim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
+                self.ax1.set_xlim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
+                self.ax2.set_ylim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
+                self.ax2.set_xlim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
 
                 self.ax1.set_xticklabels(self.ax1.get_xticks(), font)
                 self.ax1.set_yticklabels(self.ax1.get_yticks(), font)
@@ -273,7 +281,9 @@ class MultiAgentEnv(gym.Env):
                 self.ax1.set_title('Network Interference')
                 self.ax2.set_title('Agent 0\'s Buffer Tree')
 
-                if self.mobile_agents:
+                if self.flocking:
+                    type_agents = "Flocking"
+                elif self.mobile_agents:
                     type_agents = "Mobile"
                 else:
                     type_agents = "Stationary"
@@ -281,7 +291,7 @@ class MultiAgentEnv(gym.Env):
 
                 self.fig.subplots_adjust(top=0.9, left=0.1, right=0.9,
                                          bottom=0.12)  # create some space below the plots by increasing the bottom-value
-                self._plot_text = plt.text(x=-1.21 * self.r_max, y=-1.28 * self.r_max, ha='center', va='center', s="", fontsize=11,
+                self._plot_text = plt.text(x=-1.21 * render_radius, y=-1.28 * render_radius, ha='center', va='center', s="", fontsize=11,
                                            bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 5})
 
                 self.agent_markers1, = self.ax1.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
@@ -293,12 +303,12 @@ class MultiAgentEnv(gym.Env):
                 self.failed_arrows = []
                 self.paths = []
                 for i in range(self.n_agents):
-                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * self.r_max,
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * render_radius,
                                                  minshaft=.001, minlength=0)
                     self.arrows.append(temp_arrow)
                     temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1,
                                                         units='xy',
-                                                        width=.015 * self.r_max, minshaft=.001, minlength=0)
+                                                        width=.015 * render_radius, minshaft=.001, minlength=0)
                     self.failed_arrows.append(temp_failed_arrow)
 
                     temp_line, = self.ax2.plot([], [], 'k')
@@ -318,14 +328,14 @@ class MultiAgentEnv(gym.Env):
             if self.mobile_agents:
                 for i in range(self.n_agents):
                     self.arrows[i].remove()
-                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * self.r_max,
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * render_radius,
                                                  minshaft=.001, minlength=0)
                     self.arrows[i] = temp_arrow
 
                     self.failed_arrows[i].remove()
                     temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1,
                                                         units='xy',
-                                                        width=.015 * self.r_max, minshaft=.001, minlength=0)
+                                                        width=.015 * render_radius, minshaft=.001, minlength=0)
                     self.failed_arrows[i] = temp_failed_arrow
             
             transmit_distances = []
