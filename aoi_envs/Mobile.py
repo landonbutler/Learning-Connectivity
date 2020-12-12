@@ -45,8 +45,6 @@ class MobileEnv(MultiAgentEnv):
         if self.flocking:
             known_x_velocities = self.network_buffer[:,:,4]
             known_x_velocities[known_x_velocities == 0] = np.nan
-            print(known_x_velocities)
-            print(np.nanmean(known_x_velocities, axis=1))
             self.x[:,2] = np.nanmean(known_x_velocities, axis=1)
 
             known_y_velocities = self.network_buffer[:,:,4]
