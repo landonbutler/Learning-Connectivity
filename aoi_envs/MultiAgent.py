@@ -95,6 +95,11 @@ class MultiAgentEnv(gym.Env):
 
         self.known_initial_positions = False
 
+        if self.flocking:
+            self.render_radius = 2 * self.r_max
+        else:
+            self.render_radius = self.r_max
+
         # self.transmission_probability = .33  # Probability an agent will transmit at a given time step [0,1]
 
         # Push Model: At each time step, agent selects which agent they want to 'push' their buffer to
@@ -166,8 +171,9 @@ class MultiAgentEnv(gym.Env):
         relative_network_buffer[:, :, 0] = self.network_buffer[:, :, 0] - self.timestep
 
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
-        relative_network_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1, 2)
-        
+        relative_network_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1,
+                                                                                                     2)
+
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
         return self.map_to_observation_space(relative_network_buffer)
 
@@ -232,16 +238,20 @@ class MultiAgentEnv(gym.Env):
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         if self.known_initial_positions:
-           self.network_buffer[:, :, 2] = self.x[:,0]
-           self.network_buffer[:, :, 3] = self.x[:,1]
+            self.network_buffer[:, :, 2] = self.x[:, 0]
+            self.network_buffer[:, :, 3] = self.x[:, 1]
         else:
-           self.network_buffer[:, :, 2] = np.where(np.eye(self.n_agents, dtype=np.bool),
-                                                self.x[:, 0].reshape(self.n_agents, 1), self.network_buffer[:, :, 2])
-           self.network_buffer[:, :, 3] = np.where(np.eye(self.n_agents, dtype=np.bool),
-                                                self.x[:, 1].reshape(self.n_agents, 1), self.network_buffer[:, :, 3])
-            
+            self.network_buffer[:, :, 2] = np.where(np.eye(self.n_agents, dtype=np.bool),
+                                                    self.x[:, 0].reshape(self.n_agents, 1),
+                                                    self.network_buffer[:, :, 2])
+            self.network_buffer[:, :, 3] = np.where(np.eye(self.n_agents, dtype=np.bool),
+                                                    self.x[:, 1].reshape(self.n_agents, 1),
+                                                    self.network_buffer[:, :, 3])
+
         self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0,
                                                 -10)  # motivates agents to get information in the first time step
+
+        self.network_buffer[:, :, 1] = -1  # no parent references yet
 
         if self.fig != None:
             plt.close(self.fig)
@@ -262,15 +272,10 @@ class MultiAgentEnv(gym.Env):
                 self.ax1.set_aspect('equal')
                 self.ax2.set_aspect('equal')
 
-                if self.flocking:
-                    render_radius = 2 * self.r_max
-                else:
-                    render_radius = self.r_max
-
-                self.ax1.set_ylim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
-                self.ax1.set_xlim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
-                self.ax2.set_ylim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
-                self.ax2.set_xlim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
+                self.ax1.set_ylim(-1.0 * self.render_radius - 0.075, 1.0 * self.render_radius + 0.075)
+                self.ax1.set_xlim(-1.0 * self.render_radius - 0.075, 1.0 * self.render_radius + 0.075)
+                self.ax2.set_ylim(-1.0 * self.render_radius - 0.075, 1.0 * self.render_radius + 0.075)
+                self.ax2.set_xlim(-1.0 * self.render_radius - 0.075, 1.0 * self.render_radius + 0.075)
 
                 self.ax1.set_xticklabels(self.ax1.get_xticks(), font)
                 self.ax1.set_yticklabels(self.ax1.get_yticks(), font)
@@ -289,7 +294,8 @@ class MultiAgentEnv(gym.Env):
 
                 self.fig.subplots_adjust(top=0.9, left=0.1, right=0.9,
                                          bottom=0.12)  # create some space below the plots by increasing the bottom-value
-                self._plot_text = plt.text(x=-1.21 * render_radius, y=-1.28 * render_radius, ha='center', va='center', s="", fontsize=11,
+                self._plot_text = plt.text(x=-1.21 * self.render_radius, y=-1.28 * self.render_radius, ha='center',
+                                           va='center', s="", fontsize=11,
                                            bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 5})
 
                 self.agent_markers1, = self.ax1.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
@@ -301,12 +307,13 @@ class MultiAgentEnv(gym.Env):
                 self.failed_arrows = []
                 self.paths = []
                 for i in range(self.n_agents):
-                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * render_radius,
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy',
+                                                 width=.015 * self.render_radius,
                                                  minshaft=.001, minlength=0)
                     self.arrows.append(temp_arrow)
                     temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1,
                                                         units='xy',
-                                                        width=.015 * render_radius, minshaft=.001, minlength=0)
+                                                        width=.015 * self.render_radius, minshaft=.001, minlength=0)
                     self.failed_arrows.append(temp_failed_arrow)
 
                     temp_line, = self.ax2.plot([], [], 'k')
@@ -326,16 +333,17 @@ class MultiAgentEnv(gym.Env):
             if self.mobile_agents:
                 for i in range(self.n_agents):
                     self.arrows[i].remove()
-                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * render_radius,
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy',
+                                                 width=.015 * self.render_radius,
                                                  minshaft=.001, minlength=0)
                     self.arrows[i] = temp_arrow
 
                     self.failed_arrows[i].remove()
                     temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1,
                                                         units='xy',
-                                                        width=.015 * render_radius, minshaft=.001, minlength=0)
+                                                        width=.015 * self.render_radius, minshaft=.001, minlength=0)
                     self.failed_arrows[i] = temp_failed_arrow
-            
+
             transmit_distances = []
             for i in range(self.n_agents):
                 j = int(self.network_buffer[0, i, 1])
@@ -579,7 +587,7 @@ class MultiAgentEnv(gym.Env):
 
             # j is the agent that will receive i's buffer
             for j in agent_idxes:
-                if i != j:         
+                if i != j:
                     for k in range(self.n_agents):
                         # if received info is newer than known info
                         if self.network_buffer[i, k, 0] > self.network_buffer[j, k, 0]:
