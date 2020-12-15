@@ -1,11 +1,11 @@
 import gym
-import gym_flock
 import configparser
 import json
 from os import path
 import functools
 import glob
 import sys
+import argparse
 from pathlib import Path
 from stable_baselines.common import BaseRLModel
 from stable_baselines.common.vec_env import SubprocVecEnv
@@ -13,6 +13,7 @@ from stable_baselines.common.vec_env import SubprocVecEnv
 from aoi_learner.gnn_policy import GNNPolicy
 from aoi_learner.ppo2 import PPO2
 from aoi_learner.utils import ckpt_file, callback
+from test_all import find_best_model
 
 
 def train_helper(env_param, test_env_param, train_param, policy_fn, policy_param, directory, env=None, test_env=None):
@@ -81,7 +82,7 @@ def train_helper(env_param, test_env_param, train_param, policy_fn, policy_param
             total_timesteps=train_param['checkpoint_timesteps'],
             log_interval=500,
             reset_num_timesteps=False,
-            callback=functools.partial(callback, test_env=test_env, interval=5000, n_episodes=20))
+            callback=functools.partial(callback, test_env=test_env, interval=train_param['checkpoint_timesteps'], n_episodes=20))
 
         print('\nSaving model {}.\n'.format(ckpt_file(ckpt_dir, ckpt_idx).name))
         model.save(str(ckpt_file(ckpt_dir, ckpt_idx)))
@@ -130,7 +131,7 @@ def run_experiment(args, section_name='', env=None, test_env=None):
         'cliprange': args.getfloat('cliprange', 0.2),
         'adam_epsilon': args.getfloat('adam_epsilon', 1e-6),
         'vf_coef': args.getfloat('vf_coef', 0.5),
-        'ent_coef': args.getfloat('ent_coef', 0.01),
+        'ent_coef': args.getfloat('ent_coef', 1e-6),
         'lr_decay_factor': args.getfloat('lr_decay_factor', 1.0),
         # 'lr_decay_factor': args.getfloat('lr_decay_factor', 0.97),
         'lr_decay_steps': args.getfloat('lr_decay_steps', 10000),
@@ -158,11 +159,17 @@ def main():
         env = None
         test_env = None
         for section_name in config.sections():
-            print(section_name)
             env, test_env = run_experiment(config[section_name], section_name, env, test_env)
+            directory = Path('models/' + config[section_name].get('name') + section_name)
+            save_dir = Path(directory)
+            ckpt_dir = save_dir / 'ckpt'
+            find_best_model(ckpt_dir)
     else:
         run_experiment(config[config.default_section])
-
+        directory = Path('models/' + config[config.default_section].get('name') + section_name)
+        save_dir = Path(directory)
+        ckpt_dir = save_dir / 'ckpt'
+        find_best_model(ckpt_dir)
 
 if __name__ == '__main__':
     main()

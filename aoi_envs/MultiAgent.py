@@ -9,6 +9,7 @@ from matplotlib.pyplot import gca
 from graph_nets import utils_np
 import tensorflow as tf
 import networkx as nx
+import math
 
 font = {'family': 'sans-serif',
         'weight': 'bold',
@@ -21,6 +22,8 @@ N_EDGE_FEAT = 1
 save_positions = False
 load_positions = False
 
+PENALTY = -10
+
 
 class MultiAgentEnv(gym.Env):
 
@@ -28,12 +31,12 @@ class MultiAgentEnv(gym.Env):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
-        self.n_agents = 20  # int(config['network_size'])
-        self.r_max = 2.5  # 10.0  #  float(config['max_rad_init'])
+        self.n_agents = 30  # int(config['network_size'])
+        self.r_max = 25.0 * math.sqrt(4)  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
         # initialize state matrices
-        self.x = None
+        self.x = np.zeros((self.n_agents, self.n_features))
 
         self.action_space = spaces.MultiDiscrete([self.n_agents] * self.n_agents)
         # each agent has their own action space of a n_agent vector of weights
@@ -69,7 +72,7 @@ class MultiAgentEnv(gym.Env):
         self.r2 = None
         self.saved_pos = None
         self.carrier_frequency_ghz = 2.4
-        self.min_SINR = -10 # 10-15 is consider unreliable, cited paper uses -4
+        self.min_SINR = -4  # 10-15 is consider unreliable, cited paper uses -4
         self.gaussian_noise_dBm = -90
         self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
         self.path_loss_exponent = 2
@@ -77,14 +80,22 @@ class MultiAgentEnv(gym.Env):
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         self.timestep = 0
-        self.avg_transmit_distance = 0.1
+        self.avg_transmit_distance = 0
 
         self.symmetric_comms = True
         self.is_interference = True
-        self.current_agents_choice = -1
         self.mst_action = None
 
-        self.transmission_probability = .5  # Probability an agent will transmit at a given time step [0,1]
+        self.network_connected = False
+        self.recompute_solution = False
+        self.mobile_agents = False
+
+        self.flocking = False
+        self.biased_velocities = False
+
+        self.known_initial_positions = False
+
+        # self.transmission_probability = .33  # Probability an agent will transmit at a given time step [0,1]
 
         # Push Model: At each time step, agent selects which agent they want to 'push' their buffer to
         # Two-Way Model: An agent requests/pushes their buffer to an agent, with hopes of getting their information back
@@ -96,7 +107,7 @@ class MultiAgentEnv(gym.Env):
 
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
-        self.save_plots = True
+        self.save_plots = False
         self.seed()
 
     def params_from_cfg(self, args):
@@ -133,7 +144,8 @@ class MultiAgentEnv(gym.Env):
                 attempted_transmissions)  # calculates interference from attempted transmissions
         self.successful_transmissions = successful_transmissions
 
-        self.current_agents_choice = attempted_transmissions[0]
+        if not self.network_connected:
+            self.is_network_connected()
 
         if self.comm_model is "tw":
             self.update_buffers(successful_transmissions, resp_trans)
@@ -142,7 +154,7 @@ class MultiAgentEnv(gym.Env):
         # for successful transmissions, updates the buffers of those receiving information
 
         self.timestep = self.timestep + 1
-        return self.get_relative_network_buffer_as_dict(), - self.instant_cost(), False, {}
+        return self.get_relative_network_buffer_as_dict(), - self.instant_cost() / 100.0, False, {}
 
     def get_relative_network_buffer_as_dict(self):
         """
@@ -154,8 +166,8 @@ class MultiAgentEnv(gym.Env):
         relative_network_buffer[:, :, 0] = self.network_buffer[:, :, 0] - self.timestep
 
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
-        relative_network_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1,
-                                                                                                     2)
+        relative_network_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1, 2)
+        
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
         return self.map_to_observation_space(relative_network_buffer)
 
@@ -201,39 +213,36 @@ class MultiAgentEnv(gym.Env):
         return data_dict
 
     def reset(self):
-        x = np.zeros((self.n_agents, 2))
-        # length = np.random.uniform(0, self.r_max, size=(self.n_agents,))
-        # angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
-        # x[:, 0] = length * np.cos(angle)
-        # x[:, 1] = length * np.sin(angle)
-        x[:,0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents,2))
 
-        x_loc = np.reshape(x, (self.n_agents, 2, 1))
-        a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
-        np.fill_diagonal(a_net, np.Inf)
+        self.network_connected = False
+        self.x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
+
+        # x_loc = np.reshape(self.x, (self.n_agents, 2, 1))
+        # a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
+        # np.fill_diagonal(a_net, np.Inf)
 
         self.mst_action = None
+        self.network_connected = False
 
         self.timestep = 0
         if load_positions:
             self.x = np.load("saved_positions.npy")
         elif save_positions:
-            np.save("saved_positions", x)
-            self.x = x
-        else:
-            self.x = x
-        self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
-        # self.network_buffer[:, :, 0] = -100  # motivates agents to get information in the first time step
-        self.network_buffer[:, :, 1] = -1  # no parent references yet
+            np.save("saved_positions", self.x)
 
-        # TODO test this
-        # If the agents were mobile, we need to add this code into the step() function too
-        self.network_buffer[:, :, 2] = np.where(np.eye(self.n_agents, dtype=np.bool),
+        self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
+        if self.known_initial_positions:
+           self.network_buffer[:, :, 2] = self.x[:,0]
+           self.network_buffer[:, :, 3] = self.x[:,1]
+        else:
+           self.network_buffer[:, :, 2] = np.where(np.eye(self.n_agents, dtype=np.bool),
                                                 self.x[:, 0].reshape(self.n_agents, 1), self.network_buffer[:, :, 2])
-        self.network_buffer[:, :, 3] = np.where(np.eye(self.n_agents, dtype=np.bool),
+           self.network_buffer[:, :, 3] = np.where(np.eye(self.n_agents, dtype=np.bool),
                                                 self.x[:, 1].reshape(self.n_agents, 1), self.network_buffer[:, :, 3])
+            
         self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0,
                                                 -10)  # motivates agents to get information in the first time step
+
         if self.fig != None:
             plt.close(self.fig)
         self.fig = None
@@ -242,164 +251,158 @@ class MultiAgentEnv(gym.Env):
             self.compute_distances()
         return self.get_relative_network_buffer_as_dict()
 
-    def render(self, mode='human', save_plots = False):
+    def render(self, mode='human', save_plots=False, controller="Random"):
         """
         Render the environment with agents as points in 2D space
         """
         if mode == 'human':
             if self.fig == None:
                 plt.ion()
-                self.fig = plt.figure()
-                self.ax = self.fig.add_subplot(111)
-                self.agent_markers, = self.ax.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
-                self.agent0_marker, = self.ax.plot([], [], 'go')
+                self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(10, 5))
+                self.ax1.set_aspect('equal')
+                self.ax2.set_aspect('equal')
 
-                # Make extra space for the legend
-                plt.ylim(-.8 + -1.0 * self.r_max, 1.0 * self.r_max)
-                plt.xlim(-1.0 * self.r_max, 1.0 * self.r_max)
-                self._plot_text = plt.text(x=0, y=-1.2 * self.r_max, s="", fontsize=9, ha='center',
-                                           bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 6})
-                a = gca()
-                a.set_xticklabels(a.get_xticks(), font)
-                a.set_yticklabels(a.get_yticks(), font)
-                plt.title('Stationary Agent\'s Buffer Tree w/ MST  Control Policy')
+                if self.flocking:
+                    render_radius = 2 * self.r_max
+                else:
+                    render_radius = self.r_max
+
+                self.ax1.set_ylim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
+                self.ax1.set_xlim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
+                self.ax2.set_ylim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
+                self.ax2.set_xlim(-1.0 * render_radius - 0.075, 1.0 * render_radius + 0.075)
+
+                self.ax1.set_xticklabels(self.ax1.get_xticks(), font)
+                self.ax1.set_yticklabels(self.ax1.get_yticks(), font)
+                self.ax2.set_xticklabels(self.ax2.get_xticks(), font)
+                self.ax2.set_yticklabels(self.ax2.get_yticks(), font)
+                self.ax1.set_title('Network Interference')
+                self.ax2.set_title('Agent 0\'s Buffer Tree')
+
+                if self.flocking:
+                    type_agents = "Flocking"
+                elif self.mobile_agents:
+                    type_agents = "Mobile"
+                else:
+                    type_agents = "Stationary"
+                self.fig.suptitle('{0} Control Policy of {1} Agents'.format(controller, type_agents), fontsize=16)
+
+                self.fig.subplots_adjust(top=0.9, left=0.1, right=0.9,
+                                         bottom=0.12)  # create some space below the plots by increasing the bottom-value
+                self._plot_text = plt.text(x=-1.21 * render_radius, y=-1.28 * render_radius, ha='center', va='center', s="", fontsize=11,
+                                           bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 5})
+
+                self.agent_markers1, = self.ax1.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
+                self.agent0_marker1, = self.ax1.plot([], [], 'go')
+                self.agent_markers2, = self.ax2.plot([], [], 'bo')
+                self.agent0_marker2, = self.ax2.plot([], [], 'go')
+
                 self.arrows = []
-
+                self.failed_arrows = []
+                self.paths = []
                 for i in range(self.n_agents):
-                    temp_line, = self.ax.plot([], [], 'k')
-                    self.arrows.append(temp_line)
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * render_radius,
+                                                 minshaft=.001, minlength=0)
+                    self.arrows.append(temp_arrow)
+                    temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1,
+                                                        units='xy',
+                                                        width=.015 * render_radius, minshaft=.001, minlength=0)
+                    self.failed_arrows.append(temp_failed_arrow)
 
-                self.current_arrow, = self.ax.plot([], [], 'r')
+                    temp_line, = self.ax2.plot([], [], 'k')
+                    self.paths.append(temp_line)
 
-            if self.timestep <= 1:
+            if self.mobile_agents or self.timestep <= 1:
                 # Plot the agent locations at the start of the episode
-                self.agent_markers.set_xdata(self.x[:, 0])
-                self.agent_markers.set_ydata(self.x[:, 1])
-                self.agent0_marker.set_xdata(self.x[0, 0])
-                self.agent0_marker.set_ydata(self.x[0, 1])
+                self.agent_markers1.set_xdata(self.x[:, 0])
+                self.agent_markers1.set_ydata(self.x[:, 1])
+                self.agent0_marker1.set_xdata(self.x[0, 0])
+                self.agent0_marker1.set_ydata(self.x[0, 1])
+                self.agent_markers2.set_xdata(self.x[:, 0])
+                self.agent_markers2.set_ydata(self.x[:, 1])
+                self.agent0_marker2.set_xdata(self.x[0, 0])
+                self.agent0_marker2.set_ydata(self.x[0, 1])
 
+            if self.mobile_agents:
+                for i in range(self.n_agents):
+                    self.arrows[i].remove()
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.015 * render_radius,
+                                                 minshaft=.001, minlength=0)
+                    self.arrows[i] = temp_arrow
+
+                    self.failed_arrows[i].remove()
+                    temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1,
+                                                        units='xy',
+                                                        width=.015 * render_radius, minshaft=.001, minlength=0)
+                    self.failed_arrows[i] = temp_failed_arrow
+            
+            transmit_distances = []
             for i in range(self.n_agents):
                 j = int(self.network_buffer[0, i, 1])
                 if j != -1:
-                    self.arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
-                    self.arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
-                    if i == self.current_agents_choice:
-                        self.current_arrow.set_xdata([self.x[i, 0], self.x[0, 0]])
-                        self.current_arrow.set_ydata([self.x[i, 1], self.x[0, 1]])
+                    self.paths[i].set_xdata([self.x[i, 0], self.x[j, 0]])
+                    self.paths[i].set_ydata([self.x[i, 1], self.x[j, 1]])
+
                 else:
-                    self.arrows[i].set_xdata([])
-                    self.arrows[i].set_ydata([])
+                    self.paths[i].set_xdata([])
+                    self.paths[i].set_ydata([])
+
+                if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
+                    # agent chose to attempt transmission
+                    transmit_distances.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
+                    # agent chooses to communicate with j
+                    j = self.attempted_transmissions[i]
+
+                    if j == self.successful_transmissions[i]:
+                        # communication linkage is successful - black
+                        self.arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
+                        self.failed_arrows[i].set_UVC(0, 0)
+
+                    else:
+                        # communication linkage is unsuccessful - red
+                        self.arrows[i].set_UVC(0, 0)
+                        self.failed_arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
+                else:
+                    # agent chose to not attempt transmission
+                    self.arrows[i].set_UVC(0, 0)
+                    self.failed_arrows[i].set_UVC(0, 0)
 
             cost = self.compute_current_aoi()
-            tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
-            # TODO
-            self.communication_percent = 0
-            plot_str = 'Mean AoI: {0:2.2f} | Mean Depth: {1:2.2f} | Mean TX Dist: {2:2.2f} | Comm %: {3}'.format(cost,
-                                                                                                                 tree_depth,
-                                                                                                                 self.avg_transmit_distance,
-                                                                                                                 self.communication_percent)
+            if len(transmit_distances) is 0:
+                self.avg_transmit_distance = 0.0
+            else:
+                self.avg_transmit_distance = np.mean(transmit_distances)
+            mean_hops = self.find_tree_hops()
+            succ_communication_percent = self.get_successful_communication_percent()
+            plot_str = 'Mean AoI: {0:2.2f} | Mean Hops: {1:2.2f} | Mean TX Dist: {2:2.2f} | Comm %: {3} | Connected Network: {4}'.format(
+                cost,
+                mean_hops,
+                self.avg_transmit_distance,
+                succ_communication_percent,
+                self.network_connected)
             self._plot_text.set_text(plot_str)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             if save_plots:
                 plt.savefig('visuals/bufferTrees/ts' + str(self.timestep) + '.png')
 
-    def render_interference(self, mode='human', controller="Random", filepath='visuals/interference/', save_plots=False):
-        """
-        Render the interference of the environment with agents as points in 2D space
-        """
-        if mode == 'human':
-            if self.fig == None:
-                plt.ion()
-                self.fig = plt.figure()
-                self.ax = self.fig.add_subplot(111)
-                self.agent_markers, = self.ax.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
-                self.agent0_marker, = self.ax.plot([], [], 'go')
-
-                # Make extra space for the legend
-                plt.axis('equal')
-                plt.ylim(-.6 + -1.0 * self.r_max, .6 + 1.0 * self.r_max)
-                plt.xlim(-.6 + -1.0 * self.r_max, .6 + 1.0 * self.r_max)
-                self._plot_text = plt.text(x=0, y=-.87 * self.r_max, s="", fontsize=9, ha='center',
-                                           bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 4})
-                a = gca()
-                a.set_xticklabels(a.get_xticks(), font)
-                a.set_yticklabels(a.get_yticks(), font)
-                plt.title('Interference between Stationary Agents w/ ' + controller + ' Control Policy')
-                self.arrows = []
-                self.failed_arrows = []
-                for i in range(self.n_agents):
-                    temp_line = self.ax.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy', width=.03,
-                                               minshaft=.001, minlength=0)
-                    # temp_line, = self.ax.plot([], [], 'k') # black
-                    self.arrows.append(temp_line)
-                    # temp_failed_arrow, = self.ax.plot([], [], 'r') # red
-                    temp_failed_arrow = self.ax.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1, units='xy',
-                                                       width=.03, minshaft=.001, minlength=0)
-                    self.failed_arrows.append(temp_failed_arrow)
-
-            if self.timestep <= 1:
-                # Plot the agent locations at the start of the episode
-                self.agent_markers.set_xdata(self.x[:, 0])
-                self.agent_markers.set_ydata(self.x[:, 1])
-                self.agent0_marker.set_xdata(self.x[0, 0])
-                self.agent0_marker.set_ydata(self.x[0, 1])
-
-            count_succ_comm = 0
-            count_att_comm = 0
-            for i in range(self.n_agents):
-                if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
-                    # agent chose to attempt transmission
-                    count_att_comm += 1
-
-                    # agent chooses to communicate with j
-                    j = self.attempted_transmissions[i]
-                    k = self.successful_transmissions[i]
-
-                    if j == self.successful_transmissions[i]:
-                        # communication linkage is successful - black
-                        count_succ_comm += 1
-                        self.arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
-                        # self.arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
-                        # self.arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
-                        self.failed_arrows[i].set_UVC(0, 0)
-                        # self.failed_arrows[i].set_xdata([])
-                        # self.failed_arrows[i].set_ydata([])
-                    else:
-                        # communication linkage is unsuccessful - red
-                        # self.failed_arrows[i].set_xdata([self.x[i, 0], self.x[j, 0]])
-                        # self.failed_arrows[i].set_ydata([self.x[i, 1], self.x[j, 1]])
-                        self.arrows[i].set_UVC(0, 0)
-                        self.failed_arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
-                        # self.arrows[i].set_xdata([])
-                        # self.arrows[i].set_ydata([])
-                else:
-                    # agent chose to not attempt transmission
-                    self.arrows[i].set_UVC(0, 0)
-                    # self.arrows[i].set_xdata([])
-                    # self.arrows[i].set_ydata([])
-                    # self.failed_arrows[i].set_xdata([])
-                    # self.failed_arrows[i].set_ydata([])
-                    self.failed_arrows[i].set_UVC(0, 0)
-
-            cost = self.compute_current_aoi()
-            tree_depth = self.find_tree_depth(self.network_buffer[0, :, 1])
-            communication_percent = round((count_succ_comm / self.n_agents) * 100, 1)
-            if count_att_comm > 0:
-                succ_communication_percent = round((count_succ_comm / count_att_comm) * 100, 1)
-            else:
-                succ_communication_percent = 0.0
-            self.communication_percent = communication_percent
-            plot_str = 'Mean AoI: {0:2.2f} | Mean TX Dist: {1:2.2f} | Comm %: {2} | Suc Comm %: {3}'.format(cost,
-                                                                                                            self.avg_transmit_distance,
-                                                                                                            communication_percent,
-                                                                                                            succ_communication_percent)
-
-            self._plot_text.set_text(plot_str)
-            self.fig.canvas.draw()
-            self.fig.canvas.flush_events()
-            if save_plots:
-                plt.savefig(filepath + 'ts' + str(self.timestep) + '.png')
+    def get_successful_communication_percent(self):
+        count_succ_comm = 0
+        count_att_comm = 0
+        for i in range(self.n_agents):
+            if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
+                # agent chose to attempt transmission
+                count_att_comm += 1
+                # agent chooses to communicate with j
+                j = self.attempted_transmissions[i]
+                if j == self.successful_transmissions[i]:
+                    # communication linkage is successful - black
+                    count_succ_comm += 1
+        if count_att_comm > 0:
+            succ_communication_percent = round((count_succ_comm / count_att_comm) * 100, 1)
+        else:
+            succ_communication_percent = 0.0
+        return succ_communication_percent
 
     def close(self):
         pass
@@ -488,7 +491,7 @@ class MultiAgentEnv(gym.Env):
         return successful_transmissions
 
     # Given current buffer states, will pick agent with oldest AoI to communicate with
-    def greedy_controller(self, selective_comms = True):
+    def greedy_controller(self, selective_comms=True, transmission_probability=0.1):
         comm_choice = np.zeros((self.n_agents))
         for i in range(self.n_agents):
             my_buffer_ts = self.network_buffer[i, :, 0]
@@ -498,12 +501,11 @@ class MultiAgentEnv(gym.Env):
             return comm_choice.astype(int)
         else:
             tx_prob = np.random.uniform(size=(self.n_agents,))
-            return np.where(tx_prob < self.transmission_probability, comm_choice.astype(int), np.arange(self.n_agents))
-
+            return np.where(tx_prob < transmission_probability, comm_choice.astype(int), np.arange(self.n_agents))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self, selective_comms = True):
-        if self.mst_action is None:
+    def mst_controller(self, selective_comms=True, transmission_probability=0.33):
+        if self.recompute_solution or self.mst_action is None:
             self.compute_distances()
             self.dist = np.sqrt(self.r2)
             G = nx.from_numpy_array(self.dist, create_using=nx.Graph())
@@ -512,21 +514,21 @@ class MultiAgentEnv(gym.Env):
 
             parent_refs = np.array(self.find_parents(T, [-1] * self.n_agents, degrees))
             self.mst_action = parent_refs.astype(int)
-        
+
         if not selective_comms:
             return self.mst_action
         else:
             tx_prob = np.random.uniform(size=(self.n_agents,))
-            return np.where(tx_prob < self.transmission_probability, self.mst_action, np.arange(self.n_agents))
+            return np.where(tx_prob < transmission_probability, self.mst_action, np.arange(self.n_agents))
 
     # Chooses a random action from the action space
-    def random_controller(self):
+    def random_controller(self, transmission_probability=0.1):
         attempted_trans = self.action_space.sample()
         tx_prob = np.random.uniform(size=(self.n_agents,))
-        return np.where(tx_prob < self.transmission_probability, attempted_trans, np.arange(self.n_agents))
+        return np.where(tx_prob < transmission_probability, attempted_trans, np.arange(self.n_agents))
 
     # 33% MST, 33% Greedy, 33% Random
-    def neopolitan_controller(self, selective_comms = True):
+    def neopolitan_controller(self, selective_comms=True, transmission_probability=0.33):
         random_action = self.action_space.sample()
         mst_action = self.mst_controller(False)
         greedy_action = self.greedy_controller(False)
@@ -537,7 +539,7 @@ class MultiAgentEnv(gym.Env):
             return neopolitan_action
         else:
             tx_prob = np.random.uniform(size=(self.n_agents,))
-            return np.where(tx_prob < self.transmission_probability, neopolitan_action, np.arange(self.n_agents))
+            return np.where(tx_prob < transmission_probability, neopolitan_action, np.arange(self.n_agents))
 
     def find_parents(self, T, parent_ref, degrees):
         leaves = [i for i in range(self.n_agents) if degrees[i] == 1]
@@ -556,22 +558,19 @@ class MultiAgentEnv(gym.Env):
         assert (self.comm_model is "push" or self.comm_model is "tw")
 
         if self.comm_model is "push":
-            transmit_distance = self.update_buffers_push(transmission_idx)
+            self.update_buffers_push(transmission_idx)
 
         elif self.comm_model is "tw":
             # Two-Way Communications can be modeled as a sequence of a push and a response
-            transmit_distance_push = self.update_buffers_push(transmission_idx)
-            transmit_distance_response = self.update_buffers_push(response_idx, push=False)
-            transmit_distance = transmit_distance_push + transmit_distance_response
+            self.update_buffers_push(transmission_idx)
+            self.update_buffers_push(response_idx, push=False)
 
         # my information is updated
         self.network_buffer[:, :, 0] += np.eye(self.n_agents)
-        self.avg_transmit_distance = np.sum(np.power(transmit_distance, 3)) / self.n_agents
         # TODO divide by number of transmissions per agent
 
     def update_buffers_push(self, transmission_idx, push=True):
         # TODO : Convert this to NumPy vector operations
-        transmit_distance = []
         for i in range(self.n_agents):
             if push:
                 agent_idxes = [transmission_idx[i]]
@@ -580,28 +579,39 @@ class MultiAgentEnv(gym.Env):
 
             # j is the agent that will receive i's buffer
             for j in agent_idxes:
-                if i != j:
-                    transmit_distance.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
+                if i != j:         
                     for k in range(self.n_agents):
                         # if received info is newer than known info
                         if self.network_buffer[i, k, 0] > self.network_buffer[j, k, 0]:
                             self.network_buffer[j, k, :] = self.network_buffer[i, k, :]
                     self.network_buffer[j, i, 1] = j
                     # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
-        return transmit_distance
 
-    def find_tree_depth(self, local_buffer):
+    def find_tree_hops(self):
         total_depth = 0
         for i in range(self.n_agents):
-            total_depth += self.find_depth(0, i, local_buffer)
-        return total_depth / self.n_agents
+            local_buffer = self.network_buffer[i, :, 1]
+            for j in range(self.n_agents):
+                total_depth += self.find_hops(-1, j, local_buffer)
+        return total_depth / (self.n_agents ** 2)
 
-    def find_depth(self, cur_count, agent, local_buffer):
+    def find_hops(self, cur_count, agent, local_buffer):
         if agent == -1:
             return cur_count
         else:
             new_agent = int(local_buffer[int(agent)])
-            return self.find_depth(cur_count + 1, new_agent, local_buffer)
+            return self.find_hops(cur_count + 1, new_agent, local_buffer)
+
+    def is_network_connected(self):
+        if np.nonzero(self.network_buffer[:, :, 1] + 1)[0].shape[0] == (self.n_agents ** 2 - self.n_agents):
+            self.network_connected = True
+
+    def noise_floor_distance(self):
+        power_mW = 10 ** (self.tx_power / 10)
+        snr_term = np.divide(power_mW, self.gaussian_noise_mW * np.power(10, self.min_SINR / 10))
+        right_exp_term = (10 * np.log10(snr_term)) - (20 * np.log10(self.carrier_frequency_ghz * 10 ** 9)) + 147.55
+        exponent = np.divide(1, 10 * self.path_loss_exponent) * right_exp_term
+        return np.power(10, exponent)
 
     @staticmethod
     def unpack_obs(obs, ob_space):
