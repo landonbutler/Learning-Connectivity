@@ -3,6 +3,7 @@ import numpy as np
 
 N_NODE_FEAT = 6
 
+
 class MobileEnv(MultiAgentEnv):
 
     def __init__(self, agent_velocity=1.0):
@@ -24,8 +25,8 @@ class MobileEnv(MultiAgentEnv):
             self.x[:, 2] = np.random.uniform(0.5 * -self.max_v, 0.5 * self.max_v, size=(self.n_agents,))
             self.x[:, 3] = np.random.uniform(0.5 * -self.max_v, 0.5 * self.max_v, size=(self.n_agents,))
             if self.biased_velocities:
-                bias = np.random.uniform(0.5 * -self.max_v, 0.5 * self.max_v, size=(1,2))
-                self.x[:,2:4] = self.x[:,2:4] + bias
+                bias = np.random.uniform(0.5 * -self.max_v, 0.5 * self.max_v, size=(1, 2))
+                self.x[:, 2:4] = self.x[:, 2:4] + bias
         else:
             angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
             self.x[:, 2] = self.max_v * np.cos(angle)
@@ -43,13 +44,13 @@ class MobileEnv(MultiAgentEnv):
 
     def move_agents(self):
         if self.flocking:
-            known_x_velocities = self.network_buffer[:,:,4]
+            known_x_velocities = self.network_buffer[:, :, 4]
             known_x_velocities[known_x_velocities == 0] = np.nan
-            self.x[:,2] = np.nanmean(known_x_velocities, axis=1)
+            self.x[:, 2] = np.nanmean(known_x_velocities, axis=1)
 
-            known_y_velocities = self.network_buffer[:,:,4]
+            known_y_velocities = self.network_buffer[:, :, 5]
             known_y_velocities[known_y_velocities == 0] = np.nan
-            self.x[:,3] = np.nanmean(known_y_velocities, axis=1)
+            self.x[:, 3] = np.nanmean(known_y_velocities, axis=1)
 
             self.x[:, 0:2] = self.x[:, 0:2] + self.x[:, 2:4] * self.ts_length
 
