@@ -31,8 +31,8 @@ class MultiAgentEnv(gym.Env):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
-        self.n_agents = 30  # int(config['network_size'])
-        self.r_max = 25.0 * math.sqrt(4)  # 10.0  #  float(config['max_rad_init'])
+        self.n_agents = 20  # int(config['network_size'])
+        self.r_max = 50.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
 
         # initialize state matrices
