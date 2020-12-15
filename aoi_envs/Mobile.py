@@ -5,9 +5,9 @@ N_NODE_FEAT = 6
 
 class MobileEnv(MultiAgentEnv):
 
-    def __init__(self):
+    def __init__(self, agent_velocity=1.0):
         super().__init__()
-        self.max_v = 1.0 # for strictly mobile agents, this is the constant velocity
+        self.max_v = agent_velocity  # for strictly mobile agents, this is the constant velocity
         self.ts_length = 0.01
 
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)

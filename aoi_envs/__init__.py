@@ -19,6 +19,41 @@ register(
 )
 
 register(
+    id='MobileEnv00-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity':0.0},
+)
+
+register(
+    id='MobileEnv05-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity':0.5},
+)
+
+register(
+    id='MobileEnv10-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity':1.0},
+)
+
+register(
+    id='MobileEnv15-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity':1.5},
+)
+
+register(
+    id='MobileEnv20-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity':2.0},
+)
+
+register(
     id='StationaryKnownEnv-v0',
     entry_point='aoi_envs:StationaryKnownEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
