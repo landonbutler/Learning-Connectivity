@@ -33,7 +33,7 @@ class MultiAgentEnv(gym.Env):
         # default problem parameters
         self.n_agents = 20  # int(config['network_size'])
         self.r_max = 50.0  # 10.0  #  float(config['max_rad_init'])
-        self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, Value (like temperature), TransmitPower)
+        self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
 
         # initialize state matrices
         self.x = np.zeros((self.n_agents, self.n_features))
@@ -173,7 +173,9 @@ class MultiAgentEnv(gym.Env):
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
         relative_network_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1,
                                                                                                      2)
-
+        if self.mobile_agents:
+            relative_network_buffer[:, :, 4:6] = self.network_buffer[:, :, 4:6] - self.x[:, 2:4].reshape(self.n_agents, 1,
+                                                                                                     2)
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
         return self.map_to_observation_space(relative_network_buffer)
 
@@ -437,7 +439,11 @@ class MultiAgentEnv(gym.Env):
         # rows are transmitting agent, columns are receiver agents
         trans_adj_mat = np.zeros((self.n_agents, self.n_agents)) + np.NINF
         indices = np.arange(self.n_agents)
+
+        # update this chunk for changing tx_power, have attempted transmissions be a tuple (agent, tx_power)
         trans_adj_mat[indices, attempted_transmissions] = self.tx_power
+        # trans_adj_mat[indices, attempted_transmissions[:,0]] = attempted_transmissions[:,1]
+
         np.fill_diagonal(trans_adj_mat, np.NINF)
         if self.comm_model is "tw":
             resp_adj_mat = np.transpose(trans_adj_mat)
