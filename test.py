@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
         # model_name = 'models/rl_Landon/RL_GNN_5_ENT5_1/RL_GNN_5_ENT5_1.pkl'
         # model_name = 'models/rl_nonlinear_9_3/ckpt/ckpt_146.pkl'
-        model_name = 'models/rl_Landon/RL_GNN_25_K2/RL_GNN_25_K2.pkl'
+        model_name = 'models/ckpt_160.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)

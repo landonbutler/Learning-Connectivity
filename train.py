@@ -163,13 +163,13 @@ def main():
             directory = Path('models/' + config[section_name].get('name') + section_name)
             save_dir = Path(directory)
             ckpt_dir = save_dir / 'ckpt'
-            find_best_model(ckpt_dir)
+            find_best_model(ckpt_dir, test_env)
     else:
-        run_experiment(config[config.default_section])
-        directory = Path('models/' + config[config.default_section].get('name') + section_name)
+        env, test_env = run_experiment(config[config.default_section])
+        directory = Path('models/' + config[config.default_section].get('name'))
         save_dir = Path(directory)
         ckpt_dir = save_dir / 'ckpt'
-        find_best_model(ckpt_dir)
+        find_best_model(ckpt_dir, test_env)
 
 if __name__ == '__main__':
     main()

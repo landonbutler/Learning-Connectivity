@@ -11,13 +11,6 @@ from stable_baselines.common.vec_env import SubprocVecEnv
 from stable_baselines.common.base_class import BaseRLModel
 
 
-def make_env():
-    env_name = "StationaryEnv-v0"
-    my_env = gym.make(env_name)
-    my_env = gym.wrappers.FlattenDictWrapper(my_env, dict_keys=my_env.env.keys)
-    return my_env
-
-
 def eval_model(env, model, n_episodes):
     """
     Evaluate a model against an environment over N games.
@@ -42,11 +35,9 @@ def eval_model(env, model, n_episodes):
     return results
 
 
-def find_best_model(all_ckpt_dir):
-    vec_env = SubprocVecEnv([make_env])
-    env = make_env()
+def find_best_model(all_ckpt_dir, test_env):
 
-    n_episodes = 20
+    n_episodes = 50
 
     # Get the path of the last checkpoint.
     try:
@@ -71,12 +62,12 @@ def find_best_model(all_ckpt_dir):
             policy=aoi_learner.gnn_policy.GNNPolicy,
             n_steps=10,
             policy_kwargs=policy_kwargs,
-            env=vec_env)
+            env=test_env)
 
         # update new model's parameters
         model.load_parameters(params)
         print('Testing ' + ckpt + ' over ' + str(n_episodes) + ' episodes...')
-        results = eval_model(env, model, n_episodes)
+        results = eval_model(test_env, model, n_episodes)
 
         mean_reward = np.mean(results['reward'])
         std_reward = np.std(results['reward'])
@@ -93,13 +84,13 @@ def find_best_model(all_ckpt_dir):
         policy=aoi_learner.gnn_policy.GNNPolicy,
         n_steps=10,
         policy_kwargs=best_policy_kwargs,
-        env=vec_env)
+        env=test_env)
 
     best_n_episodes = 100
     # update new model's parameters
     best_model.load_parameters(best_params)
     print('Testing ' + best_ckpt + ' over ' + str(best_n_episodes) + ' episodes...')
-    results = eval_model(env, model, best_n_episodes)
+    results = eval_model(test_env, model, best_n_episodes)
 
     mean_reward = np.mean(results['reward'])
     std_reward = np.std(results['reward'])
