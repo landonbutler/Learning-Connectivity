@@ -33,6 +33,13 @@ class GNNPolicy(ActorCriticPolicy):
         else:
             raise ValueError('Unknown model type!')
 
+        if isinstance(ac_space, MultiDiscrete):
+            n_actions = tf.cast(tf.reduce_sum(ac_space.nvec), tf.int32)
+            n_actions_per_agent = int(ac_space.nvec[0] / len(ac_space.nvec))
+        else:
+            n_actions = tf.cast(ac_space.n, tf.int32)
+            n_actions_per_agent = 1
+
         batch_size, n_node, nodes, n_edge, edges, senders, receivers, globs = MultiAgentEnv.unpack_obs(
             self.processed_obs, ob_space)
 
@@ -65,8 +72,6 @@ class GNNPolicy(ActorCriticPolicy):
 
                 # sum the outputs of robot nodes to compute value
                 reshaped_nodes = tf.reshape(value_graph.nodes, (batch_size, -1))  # batch_size, n_agents * n_agents * 1
-
-                # TODO try summing only over the diagonal - the root nodes of each agents tree.
                 self._value_fn = tf.reduce_sum(reshaped_nodes, axis=1, keepdims=True)
                 self.q_value = None  # unused by PPO2
 
@@ -79,28 +84,16 @@ class GNNPolicy(ActorCriticPolicy):
                                                        name="policy_model" + str(i))
                     agent_graph = self.policy_model_i(agent_graph)
 
+                # TODO for learning the power levels, set node_output_size = num. of power levels.
+
                 # The readout GNN layer for the policy
-                # TODO modify policy GNN outputs and remove masking
                 self.policy_model = model_module(num_processing_steps=num_processing_steps,
                                                  latent_size=latent_size,
                                                  n_layers=n_layers, reducer=reducer,
-                                                 node_output_size=1, out_init_scale=1.0,
+                                                 node_output_size=n_actions_per_agent, out_init_scale=1.0,
                                                  name="policy_model")
                 policy_graph = self.policy_model(agent_graph)
-                # edge_values = policy_graph.edges
-                #
-                # # keep only edges for which senders are the landmarks, receivers are robots
-                # sender_type = tf.cast(tf.gather(nodes[:, 0], senders), tf.bool)
-                # receiver_type = tf.cast(tf.gather(nodes[:, 0], receivers), tf.bool)
-                # mask = tf.logical_and(tf.logical_not(sender_type), receiver_type)
-                # masked_edges = tf.boolean_mask(edge_values, tf.reshape(mask, (-1,)), axis=0)
 
-                if isinstance(ac_space, MultiDiscrete):
-                    n_actions = tf.cast(tf.reduce_sum(ac_space.nvec), tf.int32)
-                else:
-                    n_actions = tf.cast(ac_space.n, tf.int32)
-
-                # TODO how does the below code change for continuous action spaces?
                 self._policy = tf.reshape(policy_graph.nodes, (batch_size, n_actions))  # n_actions = n_agents ^ 2
                 self._proba_distribution = self.pdtype.proba_distribution_from_flat(self._policy)
 

@@ -26,7 +26,7 @@ args = parser.parse_args()
 
 def make_env():
     if args.mobile_env:
-        env_name = "MobileEnv-v0"
+        env_name = "MobileEnv1000-v0"
     elif args.stationary_known_env:
         env_name = "StationaryKnownEnv-v0"
     elif args.flocking_env:
@@ -51,7 +51,8 @@ def eval_model(env, model, N, render=False):
             timestep = 1
             # Run one game.
             controller = ""
-            gif_fp = "visuals/models/"
+            # gif_fp = "visuals/models/"
+            gif_fp = 'visuals/bufferTrees/'
             while not done:
                 if args.learner and model:
                     action, state = model.predict(obs, state=state, deterministic=False)
@@ -89,7 +90,7 @@ def eval_model(env, model, N, render=False):
 def save_gif(model_number, timestep, fp, controller):
     filename = fp + controller + str(model_number) + '.gif'
     with imageio.get_writer(filename, mode='I', duration=.3) as writer:
-        for i in range(1, timestep+1):
+        for i in range(1, timestep):
             fileloc = fp + 'ts' +str(i) +'.png'
             image = imageio.imread(fileloc)
             writer.append_data(image)
@@ -110,7 +111,8 @@ if __name__ == '__main__':
 
         # model_name = 'models/rl_Landon/RL_GNN_5_ENT5_1/RL_GNN_5_ENT5_1.pkl'
         # model_name = 'models/rl_nonlinear_9_3/ckpt/ckpt_146.pkl'
-        model_name = 'models/ckpt_160.pkl'
+        # model_name = 'models/rl3_mobile_1000_1/ckpt/ckpt_120.pkl'
+        model_name = 'models/rl3_mobile_2000_1/ckpt/ckpt_290.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)
