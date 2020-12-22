@@ -11,6 +11,7 @@ parser = argparse.ArgumentParser(description="My parser")
 parser.add_argument('-g', '--greedy', dest='greedy', action='store_true')
 parser.add_argument('-m', '--mst', dest='mst', action='store_true')
 parser.add_argument('-r', '--random', dest='random', action='store_true')
+parser.add_argument('-b', '--roundrobin', dest='roundrobin', action='store_true')
 parser.add_argument('-n', '--neopolitan', dest='neopolitan', action='store_true')
 parser.add_argument('-v', '--visualize', dest='visualize', action='store_true')
 parser.add_argument('-l', '--learner', dest='learner', action='store_true')
@@ -20,13 +21,13 @@ parser.add_argument('-f', '--flocking', dest='flocking_env', action='store_true'
 parser.add_argument('-gif', '--gif', dest='gif', action='store_true')
 
 parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, 
-                    mobile_env=False, stationary_known_env=False, flocking_env=False, gif=False)
+                    mobile_env=False, stationary_known_env=False, flocking_env=False, gif=False, roundrobin=False)
 args = parser.parse_args()
 
 
 def make_env():
     if args.mobile_env:
-        env_name = "MobileEnv1000-v0"
+        env_name = "MobileEnv10-v0"
     elif args.stationary_known_env:
         env_name = "StationaryKnownEnv-v0"
     elif args.flocking_env:
@@ -66,6 +67,9 @@ def eval_model(env, model, N, render=False):
                 elif args.random:
                     action = env.env.env.random_controller()
                     controller = "Random"
+                elif args.roundrobin:
+                    action = env.env.env.roundrobin_controller()
+                    controller = "RoundRobin"
                 else:
                     action = env.env.env.neopolitan_controller()
                     controller = "Neopolitan"

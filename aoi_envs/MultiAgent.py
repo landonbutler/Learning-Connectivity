@@ -32,7 +32,7 @@ class MultiAgentEnv(gym.Env):
 
         # default problem parameters
         self.n_agents = 20  # int(config['network_size'])
-        self.r_max = 50.0  # 10.0  #  float(config['max_rad_init'])
+        self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
 
         # initialize state matrices
@@ -540,6 +540,13 @@ class MultiAgentEnv(gym.Env):
         attempted_trans = self.action_space.sample()
         tx_prob = np.random.uniform(size=(self.n_agents,))
         return np.where(tx_prob < transmission_probability, attempted_trans, np.arange(self.n_agents))
+
+    # Chooses a random action from the action space
+    def roundrobin_controller(self, transmission_probability=1.0):
+        no_transmit = np.arange(self.n_agents)
+        tx_idx = np.random.choice(self.n_agents)
+        no_transmit[tx_idx] = 0
+        return no_transmit
 
     # 33% MST, 33% Greedy, 33% Random
     def neopolitan_controller(self, selective_comms=True, transmission_probability=0.33):
