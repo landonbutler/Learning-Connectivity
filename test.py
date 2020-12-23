@@ -18,15 +18,19 @@ parser.add_argument('-l', '--learner', dest='learner', action='store_true')
 parser.add_argument('-me', '--mobileenv', dest='mobile_env', action='store_true')
 parser.add_argument('-sk', '--stationaryknown', dest='stationary_known_env', action='store_true')
 parser.add_argument('-f', '--flocking', dest='flocking_env', action='store_true')
+parser.add_argument('-p', '--power_levels', dest='power_levels', action='store_true')
 parser.add_argument('-gif', '--gif', dest='gif', action='store_true')
 
 parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, 
-                    mobile_env=False, stationary_known_env=False, flocking_env=False, gif=False, roundrobin=False)
+                    mobile_env=False, stationary_known_env=False, flocking_env=False, gif=False, roundrobin=False,
+                    power_levels=False)
 args = parser.parse_args()
 
 
 def make_env():
-    if args.mobile_env:
+    if args.power_levels:
+        env_name = "PowerLevelsEnv-v0"
+    elif args.mobile_env:
         env_name = "MobileEnv10-v0"
     elif args.stationary_known_env:
         env_name = "StationaryKnownEnv-v0"

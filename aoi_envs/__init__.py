@@ -71,3 +71,10 @@ register(
     entry_point='aoi_envs:FlockingEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
 )
+
+register(
+    id='PowerLevelsEnv-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'power_levels': [20,15,10,5]},
+)
