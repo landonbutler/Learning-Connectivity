@@ -11,11 +11,12 @@ import tensorflow as tf
 import networkx as nx
 import math
 import matplotlib.colors as mc
+import matplotlib.ticker as mticker
 import colorsys
 
 font = {'family': 'sans-serif',
         'weight': 'bold',
-        'size': 14}
+        'size': 12}
 
 EPISODE_LENGTH = 500
 N_NODE_FEAT = 6
@@ -103,6 +104,8 @@ class MultiAgentEnv(gym.Env):
         self.known_initial_positions = False
 
         self.tx_power = None
+        self.eavesdroppers = None
+        self.eavesdropping = False
 
         if self.flocking:
             self.render_radius = 2 * self.r_max
@@ -269,7 +272,9 @@ class MultiAgentEnv(gym.Env):
         if self.fig != None:
             plt.close(self.fig)
         self.fig = None
+
         self.tx_power = None
+        self.eavesdroppers = None
 
         if self.is_interference:
             self.compute_distances()
@@ -332,6 +337,13 @@ class MultiAgentEnv(gym.Env):
 
                     temp_line, = self.ax2.plot([], [], 'k')
                     self.paths.append(temp_line)
+                if self.r_max >= 1000:
+                    f = mticker.ScalarFormatter(useOffset=False, useMathText=True)
+                    g = lambda x,pos : "${}$".format(f._formatSciNotation('%1.1e' % x))
+                    self.ax1.xaxis.set_major_formatter(mticker.FuncFormatter(g))
+                    self.ax1.yaxis.set_major_formatter(mticker.FuncFormatter(g))
+                    self.ax2.xaxis.set_major_formatter(mticker.FuncFormatter(g))
+                    self.ax2.yaxis.set_major_formatter(mticker.FuncFormatter(g))
 
             if self.mobile_agents or self.timestep <= 1:
                 # Plot the agent locations at the start of the episode
@@ -457,10 +469,7 @@ class MultiAgentEnv(gym.Env):
         # update this chunk for changing tx_power, have attempted transmissions be a tuple (agent, tx_power)
         trans_adj_mat[indices, attempted_transmissions] = self.power_levels[tx_power.astype(np.int)]
         # trans_adj_mat[indices, attempted_transmissions[:,0]] = attempted_transmissions[:,1]
-
         np.fill_diagonal(trans_adj_mat, np.NINF)
-        if self.comm_model is "tw":
-            resp_adj_mat = np.transpose(trans_adj_mat)
 
         successful_transmissions = self.calculate_SINR(trans_adj_mat)
 
@@ -477,7 +486,7 @@ class MultiAgentEnv(gym.Env):
         if self.comm_model is "push":
             return successful_transmissions, None
         else:
-            successful_reponses = self.calculate_SINR(resp_adj_mat)
+            successful_reponses = self.calculate_SINR(trans_adj_mat, response=True)
 
             # successful_reponses is an adj matrix of successful responses
             # we need to convert this to a python list of np arrays 
@@ -488,7 +497,9 @@ class MultiAgentEnv(gym.Env):
 
             return successful_transmissions, resp_idx
 
-    def calculate_SINR(self, trans_adj_mat):
+    def calculate_SINR(self, trans_adj_mat, response=False):
+        if response:
+            trans_adj_mat = np.transpose(trans_adj_mat)
         np.seterr('ignore')
         # Calculate SINR for each possible transmission
         self.compute_distances()
@@ -513,6 +524,8 @@ class MultiAgentEnv(gym.Env):
         past_thresh[SINR >= self.min_SINR] = 1
 
         # only keep those that did try to communicate
+        if not response:
+            self.eavesdroppers = past_thresh
         successful_transmissions = np.multiply(past_thresh, trans_adj_mat)
         successful_transmissions = np.nan_to_num(successful_transmissions)
         np.seterr('warn')
@@ -600,6 +613,10 @@ class MultiAgentEnv(gym.Env):
             self.update_buffers_push(transmission_idx)
             self.update_buffers_push(response_idx, push=False)
 
+        if self.eavesdropping:
+            self.update_buffers_eavesdropping()
+
+
         # my information is updated
         self.network_buffer[:, :, 0] += np.eye(self.n_agents)
         # TODO divide by number of transmissions per agent
@@ -621,6 +638,17 @@ class MultiAgentEnv(gym.Env):
                             self.network_buffer[j, k, :] = self.network_buffer[i, k, :]
                     self.network_buffer[j, i, 1] = j
                     # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
+
+    def update_buffers_eavesdropping(self):
+        print(self.eavesdroppers)
+        for i in range(self.n_agents):
+            for j in range(self.n_agents):
+                if i != j and self.eavesdroppers[i,j] == 1:
+                    for k in range(self.n_agents):
+                        # if received info is newer than known info
+                        if self.network_buffer[i, k, 0] > self.network_buffer[j, k, 0]:
+                            self.network_buffer[j, k, :] = self.network_buffer[i, k, :]
+                    self.network_buffer[j, i, 1] = j
 
     def find_tree_hops(self):
         total_depth = 0
@@ -681,6 +709,7 @@ class MultiAgentEnv(gym.Env):
             c = color
         c = colorsys.rgb_to_hls(*mc.to_rgb(c))
         return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
+
     @staticmethod
     def unpack_obs(obs, ob_space):
         assert tf is not None, "Function unpack_obs() is not available if Tensorflow is not imported."
