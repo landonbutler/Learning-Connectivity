@@ -10,6 +10,8 @@ from graph_nets import utils_np
 import tensorflow as tf
 import networkx as nx
 import math
+import matplotlib.colors as mc
+import colorsys
 
 font = {'family': 'sans-serif',
         'weight': 'bold',
@@ -35,8 +37,15 @@ class MultiAgentEnv(gym.Env):
         self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
 
+        
         # initialize state matrices
         self.x = np.zeros((self.n_agents, self.n_features))
+
+        self.carrier_frequency_ghz = 2.4
+        self.min_SINR = -4  # 10-15 is consider unreliable, cited paper uses -4
+        self.gaussian_noise_dBm = -90
+        self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
+        self.path_loss_exponent = 2
 
         self.power_levels = np.array(power_levels)  # in dBm, where the 0th index is default power level
         if (len(power_levels) is 0):
@@ -75,11 +84,6 @@ class MultiAgentEnv(gym.Env):
         self.diff = None
         self.r2 = None
         self.saved_pos = None
-        self.carrier_frequency_ghz = 2.4
-        self.min_SINR = -4  # 10-15 is consider unreliable, cited paper uses -4
-        self.gaussian_noise_dBm = -90
-        self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
-        self.path_loss_exponent = 2
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         self.timestep = 0
@@ -97,6 +101,8 @@ class MultiAgentEnv(gym.Env):
         self.biased_velocities = False
 
         self.known_initial_positions = False
+
+        self.tx_power = None
 
         if self.flocking:
             self.render_radius = 2 * self.r_max
@@ -148,10 +154,10 @@ class MultiAgentEnv(gym.Env):
         self.attempted_transmissions = attempted_transmissions // len(self.power_levels)
         successful_transmissions = attempted_transmissions // len(self.power_levels)
 
-        tx_power = attempted_transmissions % len(self.power_levels)
+        self.tx_power = attempted_transmissions % len(self.power_levels)
         # Transmit power can be incorporated later
         if self.is_interference:
-            successful_transmissions, resp_trans = self.interference(self.attempted_transmissions, tx_power)  # calculates interference from attempted transmissions
+            successful_transmissions, resp_trans = self.interference(self.attempted_transmissions, self.tx_power)  # calculates interference from attempted transmissions
         self.successful_transmissions = successful_transmissions
 
         if not self.network_connected:
@@ -263,6 +269,7 @@ class MultiAgentEnv(gym.Env):
         if self.fig != None:
             plt.close(self.fig)
         self.fig = None
+        self.tx_power = None
 
         if self.is_interference:
             self.compute_distances()
@@ -314,7 +321,7 @@ class MultiAgentEnv(gym.Env):
                 self.failed_arrows = []
                 self.paths = []
                 for i in range(self.n_agents):
-                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy',
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, color='b', units='xy',
                                                  width=.015 * self.render_radius,
                                                  minshaft=.001, minlength=0)
                     self.arrows.append(temp_arrow)
@@ -337,16 +344,18 @@ class MultiAgentEnv(gym.Env):
                 self.agent0_marker2.set_xdata(self.x[0, 0])
                 self.agent0_marker2.set_ydata(self.x[0, 1])
 
-            if self.mobile_agents:
+            if self.mobile_agents or len(self.power_levels) > 1:
                 for i in range(self.n_agents):
                     self.arrows[i].remove()
-                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, units='xy',
+                    succ_color = self.lighten_color('k', 1 - (self.tx_power[i] / len(self.power_levels)))
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, color=succ_color, units='xy',
                                                  width=.015 * self.render_radius,
                                                  minshaft=.001, minlength=0)
                     self.arrows[i] = temp_arrow
 
                     self.failed_arrows[i].remove()
-                    temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color='r', scale=1,
+                    fail_color = self.lighten_color('r', 1 - (self.tx_power[i] / len(self.power_levels)))
+                    temp_failed_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, color=fail_color, scale=1,
                                                         units='xy',
                                                         width=.015 * self.render_radius, minshaft=.001, minlength=0)
                     self.failed_arrows[i] = temp_failed_arrow
@@ -632,7 +641,6 @@ class MultiAgentEnv(gym.Env):
         if np.nonzero(self.network_buffer[:, :, 1] + 1)[0].shape[0] == (self.n_agents ** 2 - self.n_agents):
             self.network_connected = True
 
-
     def noise_floor_distance(self):
         power_mW = 10 ** (np.max(self.power_levels) / 10)
         snr_term = np.divide(power_mW, self.gaussian_noise_mW * np.power(10, self.min_SINR / 10))
@@ -641,11 +649,38 @@ class MultiAgentEnv(gym.Env):
         return np.power(10, exponent)
 
     def find_power_levels(self):
-        # TO DO Landon needs to write this
-        # 1, 1/2, 1/4, 1/8 power levels based on r_max * 2
         # returns python list of the various power levels expressed in dBm
-        pass
+        fraction_of_rmax = [1, 0.5, .25, .125]
+        power_levels = []
+        for i in fraction_of_rmax:
+            power_levels.append(self.find_power_level_by_dist(i * self.r_max * 2)) # Should this be r_max * 2 sqrt(2) to cover diagonal?
+        return np.array(power_levels)
 
+    def find_power_level_by_dist(self, distance):
+        free_space_path_loss = 10 * self.path_loss_exponent * np.log10(distance) + 20 * np.log10(
+                                    self.carrier_frequency_ghz * 10 ** 9) - 147.55  # dB
+        channel_gain = np.power(10, free_space_path_loss / 10)  # this is now a unitless ratio
+        gamma = np.power(10, self.min_SINR / 10)
+
+        return 10 * np.log10(channel_gain * gamma * self.gaussian_noise_mW)
+
+    def lighten_color(self, color, amount=0.5):
+        """
+        Lightens the given color by multiplying (1-luminosity) by the given amount.
+        Input can be matplotlib color string, hex string, or RGB tuple.
+
+        Examples:
+        >> lighten_color('g', 0.3)
+        >> lighten_color('#F034A3', 0.6)
+        >> lighten_color((.3,.55,.1), 0.5)
+        """
+
+        try:
+            c = mc.cnames[color]
+        except:
+            c = color
+        c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+        return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
     @staticmethod
     def unpack_obs(obs, ob_space):
         assert tf is not None, "Function unpack_obs() is not available if Tensorflow is not imported."
