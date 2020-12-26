@@ -16,7 +16,7 @@ import colorsys
 
 font = {'family': 'sans-serif',
         'weight': 'bold',
-        'size': 12}
+        'size': 11}
 
 EPISODE_LENGTH = 500
 N_NODE_FEAT = 6
@@ -30,7 +30,7 @@ PENALTY = -10
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, power_levels=[20]):
+    def __init__(self, power_levels=[20], eavesdropping=False):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
@@ -105,7 +105,8 @@ class MultiAgentEnv(gym.Env):
 
         self.tx_power = None
         self.eavesdroppers = None
-        self.eavesdropping = False
+        self.eavesdroppers_response = None
+        self.eavesdropping = eavesdropping
 
         if self.flocking:
             self.render_radius = 2 * self.r_max
@@ -275,6 +276,7 @@ class MultiAgentEnv(gym.Env):
 
         self.tx_power = None
         self.eavesdroppers = None
+        self.eavesdroppers_response = None
 
         if self.is_interference:
             self.compute_distances()
@@ -326,7 +328,7 @@ class MultiAgentEnv(gym.Env):
                 self.failed_arrows = []
                 self.paths = []
                 for i in range(self.n_agents):
-                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, color='b', units='xy',
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, color='k', units='xy',
                                                  width=.015 * self.render_radius,
                                                  minshaft=.001, minlength=0)
                     self.arrows.append(temp_arrow)
@@ -504,28 +506,32 @@ class MultiAgentEnv(gym.Env):
         # Calculate SINR for each possible transmission
         self.compute_distances()
         power_mW = 10 ** (trans_adj_mat / 10)
-        free_space_path_loss = 10 * self.path_loss_exponent * np.log10(np.sqrt(self.r2)) + 20 * np.log10(
-            self.carrier_frequency_ghz * 10 ** 9) - 147.55  # dB
-        channel_gain = np.power(.1, free_space_path_loss / 10)  # this is now a unitless ratio
-        numerator = np.multiply(power_mW, channel_gain)  # this is in mW, numerator of the SINR
 
         # power each agent is transmitting with (in mW)
         trans_pow_vector = np.sum(power_mW, axis=1)
-
+        trans_pow_matrix = np.transpose(np.multiply(trans_pow_vector, np.ones((self.n_agents, self.n_agents))))
+        
+        free_space_path_loss = 10 * self.path_loss_exponent * np.log10(np.sqrt(self.r2)) + 20 * np.log10(
+            self.carrier_frequency_ghz * 10 ** 9) - 147.55  # dB
+        channel_gain = np.power(.1, free_space_path_loss / 10)  # this is now a unitless ratio
+        numerator = np.multiply(trans_pow_matrix, channel_gain)  # this is in mW, numerator of the SINR
         # interference felt by each agent by all network transmissions
         interference_sum = np.matmul(channel_gain, trans_pow_vector)
 
         denominator = self.gaussian_noise_mW + np.expand_dims(interference_sum, axis=0) - numerator
-
         SINR = 10 * np.log10(np.divide(numerator, denominator))
 
         # find channels where transmission would be possible
         past_thresh = np.zeros((self.n_agents, self.n_agents))
         past_thresh[SINR >= self.min_SINR] = 1
 
-        # only keep those that did try to communicate
         if not response:
-            self.eavesdroppers = past_thresh
+            # Eavesdroppers are those whose transmission channel is past SINR treshold (past_thresh == 1), are not transmitting (np.transpose(trans_pow_matrix) == 0),
+            # and are not on an already communicating channel (trans_adj_mat == np.NINF)
+            self.eavesdroppers = np.where(past_thresh == 1, np.where(np.transpose(trans_pow_matrix) == 0, np.where(trans_adj_mat == np.NINF,1,0), 0), 0)
+        else:
+            self.eavesdroppers_response = np.where(past_thresh == 1, np.where(np.transpose(trans_pow_matrix) == 0, np.where(trans_adj_mat == np.NINF,1,0), 0), 0)
+        # only keep those that did try to communicate
         successful_transmissions = np.multiply(past_thresh, trans_adj_mat)
         successful_transmissions = np.nan_to_num(successful_transmissions)
         np.seterr('warn')
@@ -613,9 +619,6 @@ class MultiAgentEnv(gym.Env):
             self.update_buffers_push(transmission_idx)
             self.update_buffers_push(response_idx, push=False)
 
-        if self.eavesdropping:
-            self.update_buffers_eavesdropping()
-
 
         # my information is updated
         self.network_buffer[:, :, 0] += np.eye(self.n_agents)
@@ -623,6 +626,7 @@ class MultiAgentEnv(gym.Env):
 
     def update_buffers_push(self, transmission_idx, push=True):
         # TODO : Convert this to NumPy vector operations
+        net_buffer_cur_ts = self.network_buffer.copy()
         for i in range(self.n_agents):
             if push:
                 agent_idxes = [transmission_idx[i]]
@@ -634,21 +638,25 @@ class MultiAgentEnv(gym.Env):
                 if i != j:
                     for k in range(self.n_agents):
                         # if received info is newer than known info
-                        if self.network_buffer[i, k, 0] > self.network_buffer[j, k, 0]:
-                            self.network_buffer[j, k, :] = self.network_buffer[i, k, :]
+                        if net_buffer_cur_ts[i, k, 0] > net_buffer_cur_ts[j, k, 0]:
+                            self.network_buffer[j, k, :] = net_buffer_cur_ts[i, k, :]
                     self.network_buffer[j, i, 1] = j
                     # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
+        
+        if self.eavesdropping:
+            if push:
+                eavesdroppers = self.eavesdroppers
+            else:
+                eavesdroppers = self.eavesdroppers
+            for l in range(self.n_agents):
+                for m in range(self.n_agents):
+                    if l != m and eavesdroppers[l,m] == 1:
+                        for n in range(self.n_agents):
+                            # if received info is newer than known info
+                            if net_buffer_cur_ts[l, n, 0] > net_buffer_cur_ts[m, n, 0]:
+                                self.network_buffer[m, n, :] = net_buffer_cur_ts[l, n, :]
+                        self.network_buffer[m, l, 1] = m
 
-    def update_buffers_eavesdropping(self):
-        print(self.eavesdroppers)
-        for i in range(self.n_agents):
-            for j in range(self.n_agents):
-                if i != j and self.eavesdroppers[i,j] == 1:
-                    for k in range(self.n_agents):
-                        # if received info is newer than known info
-                        if self.network_buffer[i, k, 0] > self.network_buffer[j, k, 0]:
-                            self.network_buffer[j, k, :] = self.network_buffer[i, k, :]
-                    self.network_buffer[j, i, 1] = j
 
     def find_tree_hops(self):
         total_depth = 0

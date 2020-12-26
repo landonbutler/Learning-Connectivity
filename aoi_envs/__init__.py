@@ -78,3 +78,10 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'power_levels': []},
 )
+
+register(
+    id='EavesdroppingEnv-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'power_levels': [], 'eavesdropping':True},
+)

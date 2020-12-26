@@ -19,16 +19,19 @@ parser.add_argument('-me', '--mobileenv', dest='mobile_env', action='store_true'
 parser.add_argument('-sk', '--stationaryknown', dest='stationary_known_env', action='store_true')
 parser.add_argument('-f', '--flocking', dest='flocking_env', action='store_true')
 parser.add_argument('-p', '--power_levels', dest='power_levels', action='store_true')
+parser.add_argument('-e', '--eavesdropping', dest='eavesdropping', action='store_true')
 parser.add_argument('-gif', '--gif', dest='gif', action='store_true')
 
 parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, 
                     mobile_env=False, stationary_known_env=False, flocking_env=False, gif=False, roundrobin=False,
-                    power_levels=False)
+                    power_levels=False, eavesdropping=True)
 args = parser.parse_args()
 
 
 def make_env():
-    if args.power_levels:
+    if args.eavesdropping:
+        env_name = "EavesdroppingEnv-v0"
+    elif args.power_levels:
         env_name = "PowerLevelsEnv-v0"
     elif args.mobile_env:
         env_name = "MobileEnv10-v0"
