@@ -188,6 +188,8 @@ class MultiAgentEnv(gym.Env):
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
         relative_network_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1,
                                                                                                      2)
+        relative_network_buffer[:, :, 2:4] = relative_network_buffer[:, :, 2:4] / self.r_max
+
         if self.mobile_agents:
             relative_network_buffer[:, :, 4:6] = self.network_buffer[:, :, 4:6] - self.x[:, 2:4].reshape(self.n_agents, 1,
                                                                                                      2)
