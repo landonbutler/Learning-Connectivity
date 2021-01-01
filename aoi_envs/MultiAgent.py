@@ -193,6 +193,8 @@ class MultiAgentEnv(gym.Env):
         if self.mobile_agents:
             relative_network_buffer[:, :, 4:6] = self.network_buffer[:, :, 4:6] - self.x[:, 2:4].reshape(self.n_agents, 1,
                                                                                                      2)
+            relative_network_buffer[:, :, 4:6] = relative_network_buffer[:, :, 4:6] / self.r_max
+
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
         return self.map_to_observation_space(relative_network_buffer)
 
