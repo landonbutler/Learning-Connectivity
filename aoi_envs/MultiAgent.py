@@ -30,7 +30,7 @@ PENALTY = -10
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, power_levels=[20], eavesdropping=False):
+    def __init__(self, power_levels=[], eavesdropping=False):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
@@ -580,9 +580,10 @@ class MultiAgentEnv(gym.Env):
 
     # Chooses a random action from the action space
     def roundrobin_controller(self, transmission_probability=1.0):
+        center_agent = np.argmin(np.power(self.x[:,0], 2) +  np.power(self.x[:,1], 2)) * len(self.power_levels)
         tx_choice = np.arange(self.n_agents) * len(self.power_levels)
         tx_idx = 1 + self.timestep % (self.n_agents - 1)
-        tx_choice[tx_idx] = 0
+        tx_choice[tx_idx] = center_agent
         return tx_choice
 
     # 33% MST, 33% Greedy, 33% Random
@@ -691,7 +692,7 @@ class MultiAgentEnv(gym.Env):
         fraction_of_rmax = [1, 0.5, .25, .125] #, 0.0625, 0.03125]
         power_levels = []
         for i in fraction_of_rmax:
-            power_levels.append(self.find_power_level_by_dist(i * self.r_max * 2)) # Should this be r_max * 2 sqrt(2) to cover diagonal?
+            power_levels.append(self.find_power_level_by_dist(i * self.r_max * 2 * np.sqrt(2))) # Should this be r_max * 2 sqrt(2) to cover diagonal?
         return np.array(power_levels)
 
     def find_power_level_by_dist(self, distance):
