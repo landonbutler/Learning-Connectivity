@@ -30,7 +30,7 @@ PENALTY = -10
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, power_levels=[], eavesdropping=False):
+    def __init__(self, power_levels=[20], eavesdropping=False):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
@@ -623,7 +623,6 @@ class MultiAgentEnv(gym.Env):
             self.update_buffers_push(transmission_idx)
             self.update_buffers_push(response_idx, push=False)
 
-
         # my information is updated
         self.network_buffer[:, :, 0] += np.eye(self.n_agents)
         # TODO divide by number of transmissions per agent
@@ -642,25 +641,24 @@ class MultiAgentEnv(gym.Env):
                 if i != j:
                     for k in range(self.n_agents):
                         # if received info is newer than known info
-                        if net_buffer_cur_ts[i, k, 0] > net_buffer_cur_ts[j, k, 0]:
+                        if net_buffer_cur_ts[i, k, 0] > self.network_buffer[j, k, 0]:
                             self.network_buffer[j, k, :] = net_buffer_cur_ts[i, k, :]
                     self.network_buffer[j, i, 1] = j
                     # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
-        
+
         if self.eavesdropping:
             if push:
                 eavesdroppers = self.eavesdroppers
             else:
-                eavesdroppers = self.eavesdroppers
+                eavesdroppers = self.eavesdroppers_response
             for l in range(self.n_agents):
                 for m in range(self.n_agents):
                     if l != m and eavesdroppers[l,m] == 1:
                         for n in range(self.n_agents):
                             # if received info is newer than known info
-                            if net_buffer_cur_ts[l, n, 0] > net_buffer_cur_ts[m, n, 0]:
+                            if net_buffer_cur_ts[l, n, 0] > self.network_buffer[m, n, 0]:
                                 self.network_buffer[m, n, :] = net_buffer_cur_ts[l, n, :]
                         self.network_buffer[m, l, 1] = m
-
 
     def find_tree_hops(self):
         total_depth = 0
