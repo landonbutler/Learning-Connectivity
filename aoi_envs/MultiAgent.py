@@ -496,13 +496,13 @@ class MultiAgentEnv(gym.Env):
         #     print(tx_idx_i)
         #     tx_idx.append(tx_idx_i)
 
-        tx_idx = [np.nonzero(t)[0] for t in successful_transmissions]
+        tx_idx = [np.nonzero(t)[0] for t in successful_transmissions.T]
 
         if self.comm_model is "push":
             resp_idx = None
         else:
             successful_responses = self.calculate_SINR(trans_adj_mat, response=True)
-            resp_idx = [np.nonzero(t)[0] for t in successful_responses * successful_transmissions.T]
+            resp_idx = [np.nonzero(t)[0] for t in successful_responses.T]
 
             # # successful_responses is an adj matrix of successful responses
             # # we need to convert this to a python list of np arrays
