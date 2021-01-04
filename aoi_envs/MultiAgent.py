@@ -30,7 +30,7 @@ PENALTY = -10
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, power_levels=[20], eavesdropping=False):
+    def __init__(self, power_levels=[], eavesdropping=False):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
@@ -117,7 +117,7 @@ class MultiAgentEnv(gym.Env):
 
         # Push Model: At each time step, agent selects which agent they want to 'push' their buffer to
         # Two-Way Model: An agent requests/pushes their buffer to an agent, with hopes of getting their information back
-        # self.comm_model = "tw"  # push or tw
+        # self.comm_model = "push"  # push or tw
         self.comm_model = "tw"  # push or tw
 
         self.attempted_transmissions = None
@@ -555,7 +555,7 @@ class MultiAgentEnv(gym.Env):
             return np.where(tx_prob < transmission_probability, comm_choice.astype(int), np.arange(self.n_agents) * len(self.power_levels))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self, selective_comms=True, transmission_probability=0.33):
+    def mst_controller(self, selective_comms=True, transmission_probability=0.1):
         if self.recompute_solution or self.mst_action is None:
             self.compute_distances()
             self.dist = np.sqrt(self.r2)
@@ -690,7 +690,7 @@ class MultiAgentEnv(gym.Env):
 
     def find_power_levels(self):
         # returns python list of the various power levels expressed in dBm
-        fraction_of_rmax = [1, 0.5, .25, .125]
+        fraction_of_rmax = [1, 0.5, .25, .125] #, 0.0625, 0.03125]
         power_levels = []
         for i in fraction_of_rmax:
             power_levels.append(self.find_power_level_by_dist(i * self.r_max * 2)) # Should this be r_max * 2 sqrt(2) to cover diagonal?

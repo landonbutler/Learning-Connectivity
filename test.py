@@ -24,7 +24,7 @@ parser.add_argument('-gif', '--gif', dest='gif', action='store_true')
 
 parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, 
                     mobile_env=False, stationary_known_env=False, flocking_env=False, gif=False, roundrobin=False,
-                    power_levels=False, eavesdropping=True)
+                    power_levels=False, eavesdropping=False)
 args = parser.parse_args()
 
 
@@ -41,6 +41,7 @@ def make_env():
         env_name = "FlockingEnv-v0"
     else:
         env_name = "StationaryEnv-v0"
+    print(env_name)
     my_env = gym.make(env_name)
     my_env = gym.wrappers.FlattenDictWrapper(my_env, dict_keys=my_env.env.keys)
     return my_env
@@ -124,6 +125,8 @@ if __name__ == '__main__':
         # model_name = 'models/rl_nonlinear_9_3/ckpt/ckpt_146.pkl'
         # model_name = 'models/rl3_mobile_1000_1/ckpt/ckpt_120.pkl'
         model_name = 'models/rl3_mobile_2000_1/ckpt/ckpt_290.pkl'
+        model_name = 'models/eaves6_1/ckpt/ckpt_200.pkl'
+        model_name = 'models/rl_Landon/EVE_GNN_R500_4/EVE_GNN_R500_4.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)
