@@ -34,7 +34,7 @@ class MultiAgentEnv(gym.Env):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
-        self.n_agents = 20  # int(config['network_size'])
+        self.n_agents = 3  # int(config['network_size'])
         self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
 
@@ -580,10 +580,12 @@ class MultiAgentEnv(gym.Env):
 
     # Chooses a random action from the action space
     def roundrobin_controller(self, transmission_probability=1.0):
-        center_agent = np.argmin(np.power(self.x[:,0], 2) +  np.power(self.x[:,1], 2)) * len(self.power_levels)
+        center_agent = np.argmin(np.power(self.x[:,0], 2) +  np.power(self.x[:,1], 2))
         tx_choice = np.arange(self.n_agents) * len(self.power_levels)
-        tx_idx = 1 + self.timestep % (self.n_agents - 1)
-        tx_choice[tx_idx] = center_agent
+        tx_idx = self.timestep % (self.n_agents - 1)
+        if tx_idx >= center_agent:
+            tx_idx += 1
+        tx_choice[tx_idx] = center_agent * len(self.power_levels)
         return tx_choice
 
     # 33% MST, 33% Greedy, 33% Random
