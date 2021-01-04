@@ -394,8 +394,8 @@ class MultiAgentEnv(gym.Env):
                     transmit_distances.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
                     # agent chooses to communicate with j
                     j = self.attempted_transmissions[i]
-                    print(self.successful_transmissions[i][0][0])
-                    if j == self.successful_transmissions[i]:
+                    # print(self.successful_transmissions[i][0][0])
+                    if len(self.successful_transmissions[i]) > 0 and j == self.successful_transmissions[i][0]:
                         # communication linkage is successful - black
                         self.arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
                         self.failed_arrows[i].set_UVC(0, 0)
@@ -437,7 +437,7 @@ class MultiAgentEnv(gym.Env):
                 count_att_comm += 1
                 # agent chooses to communicate with j
                 j = self.attempted_transmissions[i]
-                if j == self.successful_transmissions[i]:
+                if len(self.successful_transmissions[i])> 0 and j == self.successful_transmissions[i][0]:
                     # communication linkage is successful - black
                     count_succ_comm += 1
         if count_att_comm > 0:
@@ -465,7 +465,6 @@ class MultiAgentEnv(gym.Env):
             return self.compute_current_aoi() + self.avg_transmit_distance * 0.05
 
     def interference(self, attempted_transmissions, tx_power):
-
         # converts attempted transmissions list to an adjacency matrix
         # 0's - no communication, tx_power on indices that are communicating
         # rows are transmitting agent, columns are receiver agents
@@ -478,24 +477,6 @@ class MultiAgentEnv(gym.Env):
         np.fill_diagonal(trans_adj_mat, np.NINF)
 
         successful_transmissions = self.calculate_SINR(trans_adj_mat)
-
-        # # from the adj mat, find the indices of those who succesfully communicated
-        # # -1's indicate unsuccessful communications
-        # # TODO : Change this logic for when agents can communicate with multiple
-        # find_who_tx = np.c_[np.zeros(self.n_agents), successful_transmissions]
-        # transmission_idx = (np.argmax(find_who_tx, axis=1) - 1).astype(int)
-        #
-        # # remove -1's and replace with respective agent's index (similar to self-communication)
-        # # this is necessary to be compatible with update_buffer since our action space is
-        # # {0,...,n-1} (doesn't include -1)
-        # successful_transmissions = np.where(transmission_idx != -1, transmission_idx, np.arange(self.n_agents))
-
-        # tx_idx = []
-        # for i in range(self.n_agents):
-        #     tx_idx_i = np.nonzero(successful_transmissions[i, :])[0]
-        #     print(tx_idx_i)
-        #     tx_idx.append(tx_idx_i)
-
         tx_idx = [np.nonzero(t)[0] for t in successful_transmissions.T]
 
         if self.comm_model is "push":
@@ -504,18 +485,6 @@ class MultiAgentEnv(gym.Env):
             successful_responses = self.calculate_SINR(trans_adj_mat, response=True)
             resp_idx = [np.nonzero(t)[0] for t in successful_responses.T]
 
-            # # successful_responses is an adj matrix of successful responses
-            # # we need to convert this to a python list of np arrays
-            # resp_idx = []
-            # for i in range(self.n_agents):
-            #     resp_idx_i = np.nonzero(successful_responses[i, :].flatten() * successful_transmissions[:, i].flatten())[0]
-            #     resp_idx.append(resp_idx_i)
-            #     print(resp_idx_i)
-            #     print
-        print('tx')
-        print(tx_idx)
-        print('resp')
-        print(resp_idx)
         return tx_idx, resp_idx
 
     def calculate_SINR(self, trans_adj_mat, response=False):
