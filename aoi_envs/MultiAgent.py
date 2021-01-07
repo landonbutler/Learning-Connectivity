@@ -18,9 +18,10 @@ font = {'family': 'sans-serif',
         'weight': 'bold',
         'size': 11}
 
-EPISODE_LENGTH = 500
+EPISODE_LENGTH = 200
 N_NODE_FEAT = 6
 N_EDGE_FEAT = 1
+
 
 save_positions = False
 load_positions = False
@@ -38,7 +39,7 @@ class MultiAgentEnv(gym.Env):
         self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
 
-        self.fraction_of_rmax = [0.33, 0.25, .125, 0.06125]  # , 0.0625, 0.03125]
+        self.fraction_of_rmax = [0.5, .125]  # , 0.0625, 0.03125]
 
         # initialize state matrices
         self.x = np.zeros((self.n_agents, self.n_features))
@@ -184,7 +185,7 @@ class MultiAgentEnv(gym.Env):
         if not self.network_connected:
             self.is_network_connected()
 
-        return self.get_relative_network_buffer_as_dict(), - self.instant_cost() / 100.0, False, {}
+        return self.get_relative_network_buffer_as_dict(), - self.instant_cost() / EPISODE_LENGTH, False, {}
 
     def get_relative_network_buffer_as_dict(self):
         """
@@ -507,14 +508,18 @@ class MultiAgentEnv(gym.Env):
         successful_tx = np.zeros((self.n_agents, self.n_agents))
         successful_tx[tx_sinr >= self.min_SINR] = 1
 
-        # TODO check this
-        eavesdroppers = np.where(successful_tx == 1,
-                                 np.where(np.transpose(power_mw) == 0, np.where(tx_adj_mat_power_db == np.NINF, 1, 0),
-                                          0), 0)
-
         # only keep those that did try to communicate
         successful_tx_power = np.where(successful_tx, tx_adj_mat_power_db, np.NINF)
         successful_tx_power = np.nan_to_num(successful_tx_power, nan=0.0, neginf=0.0)
+
+        # TODO check this
+        if not self.eavesdropping:
+            eavesdroppers = None
+        else:
+            eavesdroppers = np.where(successful_tx == 1,
+                                     np.where(np.transpose(power_mw) == 0,
+                                              np.where(tx_adj_mat_power_db == np.NINF, 1, 0), 0), 0)
+
         return successful_tx_power, eavesdroppers
 
     # Given current buffer states, will pick agent with oldest AoI to communicate with
