@@ -38,6 +38,8 @@ class MultiAgentEnv(gym.Env):
         self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
 
+        self.fraction_of_rmax = [0.33, 0.25, .125, 0.06125]  # , 0.0625, 0.03125]
+
         # initialize state matrices
         self.x = np.zeros((self.n_agents, self.n_features))
 
@@ -250,16 +252,9 @@ class MultiAgentEnv(gym.Env):
 
     def reset(self):
 
-        self.network_connected = False
         self.x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
-
-        # x_loc = np.reshape(self.x, (self.n_agents, 2, 1))
-        # a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
-        # np.fill_diagonal(a_net, np.Inf)
-
         self.mst_action = None
         self.network_connected = False
-
         self.timestep = 0
         if load_positions:
             self.x = np.load("saved_positions.npy")
@@ -538,7 +533,7 @@ class MultiAgentEnv(gym.Env):
                             np.arange(self.n_agents) * len(self.power_levels))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self, selective_comms=True, transmission_probability=0.33):
+    def mst_controller(self, selective_comms=True, transmission_probability=0.1):
         if self.recompute_solution or self.mst_action is None:
             distances = self.compute_distances()
             G = nx.from_numpy_array(distances, create_using=nx.Graph())
@@ -651,9 +646,8 @@ class MultiAgentEnv(gym.Env):
 
     def find_power_levels(self):
         # returns python list of the various power levels expressed in dBm
-        fraction_of_rmax = [1, 0.5, .25, .125]  # , 0.0625, 0.03125]
         power_levels = []
-        for i in fraction_of_rmax:
+        for i in self.fraction_of_rmax:
             power_levels.append(self.find_power_level_by_dist(
                 i * self.r_max * 2 * np.sqrt(2)))  # Should this be r_max * 2 sqrt(2) to cover diagonal?
         return np.array(power_levels)
