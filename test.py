@@ -128,6 +128,7 @@ if __name__ == '__main__':
         model_name = 'models/eaves6_1/ckpt/ckpt_200.pkl'
         # model_name = 'models/rl_Landon/EVE_GNN_R500_4/EVE_GNN_R500_4.pkl'
         model_name = 'models/power8_1/ckpt/ckpt_170.pkl'
+        model_name = 'models/power8_3/ckpt/ckpt_160.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)

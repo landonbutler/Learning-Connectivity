@@ -1,15 +1,10 @@
 import gym
-from gym import spaces, error, utils
+from gym import spaces
 from gym.utils import seeding
 import numpy as np
-import configparser
-from os import path
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import gca
-from graph_nets import utils_np
 import tensorflow as tf
 import networkx as nx
-import math
 import matplotlib.colors as mc
 import matplotlib.ticker as mticker
 import colorsys
@@ -18,7 +13,7 @@ font = {'family': 'sans-serif',
         'weight': 'bold',
         'size': 11}
 
-EPISODE_LENGTH = 200
+EPISODE_LENGTH = 500
 N_NODE_FEAT = 6
 N_EDGE_FEAT = 1
 
@@ -51,7 +46,7 @@ class MultiAgentEnv(gym.Env):
         self.path_loss_exponent = 2
 
         self.power_levels = np.array(power_levels)  # in dBm, where the 0th index is default power level
-        if (len(power_levels) is 0):
+        if len(power_levels) is 0:
             self.power_levels = self.find_power_levels()  # method finding
 
         self.action_space = spaces.MultiDiscrete([self.n_agents * len(self.power_levels)] * self.n_agents)

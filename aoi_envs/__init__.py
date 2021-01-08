@@ -4,7 +4,7 @@ from aoi_envs.StationaryKnown import StationaryKnownEnv
 from aoi_envs.Flocking import FlockingEnv
 from gym.envs.registration import register
 
-MAX_EPISODE_STEPS = 200
+MAX_EPISODE_STEPS = 500
 
 register(
     id='StationaryEnv-v0',
