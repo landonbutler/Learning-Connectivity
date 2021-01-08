@@ -8,7 +8,7 @@ import sys
 import argparse
 from pathlib import Path
 from stable_baselines.common import BaseRLModel
-from stable_baselines.common.vec_env import SubprocVecEnv
+from stable_baselines.common.vec_env import SubprocVecEnv, VecNormalize
 
 from aoi_learner.gnn_policy import GNNPolicy
 from aoi_learner.ppo2 import PPO2
@@ -25,6 +25,9 @@ def train_helper(env_param, test_env_param, train_param, policy_fn, policy_param
 
     if env is None:
         env = SubprocVecEnv([env_param['make_env']] * train_param['n_env'])
+        if 'normalize_reward' in train_param and train_param['normalize_reward']:
+            print('Reward will be normalized during training')
+            env = VecNormalize(env, norm_obs=False, norm_reward=True)
     if test_env is None:
         test_env = SubprocVecEnv([test_env_param['make_env']])
 

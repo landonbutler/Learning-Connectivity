@@ -1,15 +1,10 @@
 import gym
-from gym import spaces, error, utils
+from gym import spaces
 from gym.utils import seeding
 import numpy as np
-import configparser
-from os import path
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import gca
-from graph_nets import utils_np
 import tensorflow as tf
 import networkx as nx
-import math
 import matplotlib.colors as mc
 import matplotlib.ticker as mticker
 import colorsys
@@ -21,6 +16,7 @@ font = {'family': 'sans-serif',
 EPISODE_LENGTH = 500
 N_NODE_FEAT = 6
 N_EDGE_FEAT = 1
+
 
 save_positions = False
 load_positions = False
@@ -38,7 +34,8 @@ class MultiAgentEnv(gym.Env):
         self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
 
-        
+        self.fraction_of_rmax = [0.5, .125]  # , 0.0625, 0.03125]
+
         # initialize state matrices
         self.x = np.zeros((self.n_agents, self.n_features))
 
@@ -49,10 +46,10 @@ class MultiAgentEnv(gym.Env):
         self.path_loss_exponent = 2
 
         self.power_levels = np.array(power_levels)  # in dBm, where the 0th index is default power level
-        if (len(power_levels) is 0):
-            self.power_levels = self.find_power_levels() # method finding
+        if len(power_levels) is 0:
+            self.power_levels = self.find_power_levels()  # method finding
 
-        self.action_space = spaces.MultiDiscrete([self.n_agents * len(self.power_levels)] * self.n_agents )
+        self.action_space = spaces.MultiDiscrete([self.n_agents * len(self.power_levels)] * self.n_agents)
         # each agent has their own action space of a n_agent vector of weights
 
         self.observation_space = spaces.Dict(
@@ -128,20 +125,20 @@ class MultiAgentEnv(gym.Env):
         self.save_plots = False
         self.seed()
 
-    def params_from_cfg(self, args):
-        self.action_space = spaces.Box(low=-self.max_accel, high=self.max_accel, shape=(2 * self.n_agents,),
-                                       dtype=np.float32)
-
-        self.observation_space = spaces.Box(low=-np.Inf, high=np.Inf, shape=(self.n_agents, self.n_features),
-                                            dtype=np.float32)
-
-        self.carrier_frequency_ghz = args.getfloat('carrier_frequency_ghz')
-        self.min_SINR = args.getfloat('min_SINR')
-        self.gaussian_noise_dBm = args.getfloat('gaussian_noise_dBm')
-        self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
-        self.path_loss_exponent = args.getfloat('path_loss_exponent')
-
-        self.is_interference = args.getbool('is_interference')
+    # def params_from_cfg(self, args):
+    #     self.action_space = spaces.Box(low=-self.max_accel, high=self.max_accel, shape=(2 * self.n_agents,),
+    #                                    dtype=np.float32)
+    #
+    #     self.observation_space = spaces.Box(low=-np.Inf, high=np.Inf, shape=(self.n_agents, self.n_features),
+    #                                         dtype=np.float32)
+    #
+    #     self.carrier_frequency_ghz = args.getfloat('carrier_frequency_ghz')
+    #     self.min_SINR = args.getfloat('min_SINR')
+    #     self.gaussian_noise_dBm = args.getfloat('gaussian_noise_dBm')
+    #     self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
+    #     self.path_loss_exponent = args.getfloat('path_loss_exponent')
+    #
+    #     self.is_interference = args.getbool('is_interference')
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -154,27 +151,36 @@ class MultiAgentEnv(gym.Env):
         :param attempted_transmissions: n-vector of index of who to communicate with
         :return: Environment observations as a dict representing the graph.
         """
-       
+
         self.attempted_transmissions = attempted_transmissions // len(self.power_levels)
-        successful_transmissions = attempted_transmissions // len(self.power_levels)
+        transmission_indexes = attempted_transmissions // len(self.power_levels)
 
         self.tx_power = attempted_transmissions % len(self.power_levels)
-        # Transmit power can be incorporated later
+
         if self.is_interference:
-            successful_transmissions, resp_trans = self.interference(self.attempted_transmissions, self.tx_power)  # calculates interference from attempted transmissions
-        self.successful_transmissions = successful_transmissions
+            # calculates interference from attempted transmissions
+            transmission_indexes, response_indexes = self.interference(self.attempted_transmissions, self.tx_power)
+        self.successful_transmissions = transmission_indexes
+
+        assert (self.comm_model is "push" or self.comm_model is "tw")
+
+        if self.comm_model is "push":
+            self.update_buffers(transmission_indexes)
+
+        if self.comm_model is "tw":
+            # Two-Way Communications can be modeled as a sequence of a push and a response
+            self.update_buffers(transmission_indexes)
+            self.update_buffers(response_indexes, push=False)
+
+        # my information is updated
+        self.network_buffer[:, :, 0] += np.eye(self.n_agents)
+
+        self.timestep = self.timestep + 1
 
         if not self.network_connected:
             self.is_network_connected()
 
-        if self.comm_model is "tw":
-            self.update_buffers(successful_transmissions, resp_trans)
-        else:
-            self.update_buffers(successful_transmissions)
-        # for successful transmissions, updates the buffers of those receiving information
-
-        self.timestep = self.timestep + 1
-        return self.get_relative_network_buffer_as_dict(), - self.instant_cost() / 100.0, False, {}
+        return self.get_relative_network_buffer_as_dict(), - self.instant_cost() / EPISODE_LENGTH, False, {}
 
     def get_relative_network_buffer_as_dict(self):
         """
@@ -191,8 +197,9 @@ class MultiAgentEnv(gym.Env):
         relative_network_buffer[:, :, 2:4] = relative_network_buffer[:, :, 2:4] / self.r_max
 
         if self.mobile_agents:
-            relative_network_buffer[:, :, 4:6] = self.network_buffer[:, :, 4:6] - self.x[:, 2:4].reshape(self.n_agents, 1,
-                                                                                                     2)
+            relative_network_buffer[:, :, 4:6] = self.network_buffer[:, :, 4:6] - self.x[:, 2:4].reshape(self.n_agents,
+                                                                                                         1,
+                                                                                                         2)
             relative_network_buffer[:, :, 4:6] = relative_network_buffer[:, :, 4:6] / self.r_max
 
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
@@ -241,16 +248,9 @@ class MultiAgentEnv(gym.Env):
 
     def reset(self):
 
-        self.network_connected = False
         self.x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
-
-        # x_loc = np.reshape(self.x, (self.n_agents, 2, 1))
-        # a_net = np.sum(np.square(np.transpose(x_loc, (0, 2, 1)) - np.transpose(x_loc, (2, 0, 1))), axis=2)
-        # np.fill_diagonal(a_net, np.Inf)
-
         self.mst_action = None
         self.network_connected = False
-
         self.timestep = 0
         if load_positions:
             self.x = np.load("saved_positions.npy")
@@ -282,8 +282,8 @@ class MultiAgentEnv(gym.Env):
         self.eavesdroppers = None
         self.eavesdroppers_response = None
 
-        if self.is_interference:
-            self.compute_distances()
+        # if self.is_interference:
+        #     self.compute_distances()
         return self.get_relative_network_buffer_as_dict()
 
     def render(self, mode='human', save_plots=False, controller="Random"):
@@ -345,7 +345,7 @@ class MultiAgentEnv(gym.Env):
                     self.paths.append(temp_line)
                 if self.r_max >= 1000:
                     f = mticker.ScalarFormatter(useOffset=False, useMathText=True)
-                    g = lambda x,pos : "${}$".format(f._formatSciNotation('%1.1e' % x))
+                    g = lambda x, pos: "${}$".format(f._formatSciNotation('%1.1e' % x))
                     self.ax1.xaxis.set_major_formatter(mticker.FuncFormatter(g))
                     self.ax1.yaxis.set_major_formatter(mticker.FuncFormatter(g))
                     self.ax2.xaxis.set_major_formatter(mticker.FuncFormatter(g))
@@ -366,7 +366,8 @@ class MultiAgentEnv(gym.Env):
                 for i in range(self.n_agents):
                     self.arrows[i].remove()
                     succ_color = self.lighten_color('k', 1 - (self.tx_power[i] / len(self.power_levels)))
-                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, color=succ_color, units='xy',
+                    temp_arrow = self.ax1.quiver(self.x[i, 0], self.x[i, 1], 0, 0, scale=1, color=succ_color,
+                                                 units='xy',
                                                  width=.015 * self.render_radius,
                                                  minshaft=.001, minlength=0)
                     self.arrows[i] = temp_arrow
@@ -394,8 +395,8 @@ class MultiAgentEnv(gym.Env):
                     transmit_distances.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
                     # agent chooses to communicate with j
                     j = self.attempted_transmissions[i]
-
-                    if j == self.successful_transmissions[i]:
+                    # print(self.successful_transmissions[i][0][0])
+                    if len(self.successful_transmissions[i]) > 0 and j == self.successful_transmissions[i][0]:
                         # communication linkage is successful - black
                         self.arrows[i].set_UVC(self.x[j, 0] - self.x[i, 0], self.x[j, 1] - self.x[i, 1])
                         self.failed_arrows[i].set_UVC(0, 0)
@@ -437,7 +438,7 @@ class MultiAgentEnv(gym.Env):
                 count_att_comm += 1
                 # agent chooses to communicate with j
                 j = self.attempted_transmissions[i]
-                if j == self.successful_transmissions[i]:
+                if len(self.successful_transmissions[i]) > 0 and j == self.successful_transmissions[i][0]:
                     # communication linkage is successful - black
                     count_succ_comm += 1
         if count_att_comm > 0:
@@ -450,10 +451,10 @@ class MultiAgentEnv(gym.Env):
         pass
 
     def compute_distances(self):
-        self.diff = self.x[:, 0:2].reshape((self.n_agents, 1, 2)) - self.x[:, 0:2].reshape((1, self.n_agents, 2))
-        self.r2 = np.multiply(self.diff[:, :, 0], self.diff[:, :, 0]) + np.multiply(self.diff[:, :, 1],
-                                                                                    self.diff[:, :, 1])
-        np.fill_diagonal(self.r2, np.Inf)
+        diff = self.x[:, 0:2].reshape((self.n_agents, 1, 2)) - self.x[:, 0:2].reshape((1, self.n_agents, 2))
+        dist = np.linalg.norm(diff, axis=2)
+        np.fill_diagonal(dist, np.PINF)
+        return dist
 
     def compute_current_aoi(self):
         return - np.mean(self.network_buffer[:, :, 0] - self.timestep)
@@ -465,101 +466,77 @@ class MultiAgentEnv(gym.Env):
             return self.compute_current_aoi() + self.avg_transmit_distance * 0.05
 
     def interference(self, attempted_transmissions, tx_power):
-
         # converts attempted transmissions list to an adjacency matrix
         # 0's - no communication, tx_power on indices that are communicating
         # rows are transmitting agent, columns are receiver agents
-        trans_adj_mat = np.zeros((self.n_agents, self.n_agents)) + np.NINF
-        indices = np.arange(self.n_agents)
+        tx_adj_mat = np.zeros((self.n_agents, self.n_agents)) + np.NINF
+        tx_adj_mat[np.arange(self.n_agents), attempted_transmissions] = self.power_levels[tx_power.astype(np.int)]
+        np.fill_diagonal(tx_adj_mat, np.NINF)
 
-        # update this chunk for changing tx_power, have attempted transmissions be a tuple (agent, tx_power)
-        trans_adj_mat[indices, attempted_transmissions] = self.power_levels[tx_power.astype(np.int)]
-        # trans_adj_mat[indices, attempted_transmissions[:,0]] = attempted_transmissions[:,1]
-        np.fill_diagonal(trans_adj_mat, np.NINF)
+        successful_tx_power, self.eavesdroppers = self.calculate_sinr(tx_adj_mat)
+        tx_idx = [np.nonzero(t)[0] for t in successful_tx_power]
 
-        successful_transmissions = self.calculate_SINR(trans_adj_mat)
-
-        # from the adj mat, find the indices of those who succesfully communicated
-        # -1's indicate unsuccessful communications
-        # TODO : Change this logic for when agents can communicate with multiple
-        find_who_tx = np.c_[np.zeros(self.n_agents), successful_transmissions]
-        transmission_idx = (np.argmax(find_who_tx, axis=1) - 1).astype(int)
-
-        # remove -1's and replace with respective agent's index (similar to self-communication)
-        # this is necessary to be compatible with update_buffer since our action space is
-        # {0,...,n-1} (doesn't include -1)
-        successful_transmissions = np.where(transmission_idx != -1, transmission_idx, np.arange(self.n_agents))
         if self.comm_model is "push":
-            return successful_transmissions, None
+            resp_idx = None
         else:
-            successful_reponses = self.calculate_SINR(trans_adj_mat, response=True)
+            resp_adj_mat = np.transpose(np.where(successful_tx_power, tx_adj_mat, np.NINF))
+            successful_responses, self.eavesdroppers_response = self.calculate_sinr(resp_adj_mat)
+            resp_idx = [np.nonzero(t)[0] for t in successful_responses]
 
-            # successful_reponses is an adj matrix of successful responses
-            # we need to convert this to a python list of np arrays 
-            resp_idx = []
-            for i in range(self.n_agents):
-                resp_idx_i = np.nonzero(successful_reponses[i, :])
-                resp_idx.append(resp_idx_i)
+        return tx_idx, resp_idx
 
-            return successful_transmissions, resp_idx
-
-    def calculate_SINR(self, trans_adj_mat, response=False):
-        if response:
-            trans_adj_mat = np.transpose(trans_adj_mat)
-        np.seterr('ignore')
+    def calculate_sinr(self, tx_adj_mat_power_db):
         # Calculate SINR for each possible transmission
-        self.compute_distances()
-        power_mW = 10 ** (trans_adj_mat / 10)
-
-        # power each agent is transmitting with (in mW)
-        trans_pow_vector = np.sum(power_mW, axis=1)
-        trans_pow_matrix = np.transpose(np.multiply(trans_pow_vector, np.ones((self.n_agents, self.n_agents))))
-        
-        free_space_path_loss = 10 * self.path_loss_exponent * np.log10(np.sqrt(self.r2)) + 20 * np.log10(
+        free_space_path_loss = 10 * self.path_loss_exponent * np.log10(self.compute_distances()) + 20 * np.log10(
             self.carrier_frequency_ghz * 10 ** 9) - 147.55  # dB
         channel_gain = np.power(.1, free_space_path_loss / 10)  # this is now a unitless ratio
-        numerator = np.multiply(trans_pow_matrix, channel_gain)  # this is in mW, numerator of the SINR
-        # interference felt by each agent by all network transmissions
-        interference_sum = np.matmul(channel_gain, trans_pow_vector)
 
-        denominator = self.gaussian_noise_mW + np.expand_dims(interference_sum, axis=0) - numerator
-        SINR = 10 * np.log10(np.divide(numerator, denominator))
+        # Max power each agent is transmitting with (in mW)
+        power_mw = np.max(10 ** (tx_adj_mat_power_db / 10), axis=1, keepdims=True)
+        numerator = channel_gain * power_mw
+        denominator = self.gaussian_noise_mW + np.sum(numerator, axis=0, keepdims=True) - numerator
+
+        with np.errstate(divide='ignore'):
+            tx_sinr = 10 * np.log10(np.divide(numerator, denominator))
 
         # find channels where transmission would be possible
-        past_thresh = np.zeros((self.n_agents, self.n_agents))
-        past_thresh[SINR >= self.min_SINR] = 1
+        successful_tx = np.zeros((self.n_agents, self.n_agents))
+        successful_tx[tx_sinr >= self.min_SINR] = 1
 
-        if not response:
-            # Eavesdroppers are those whose transmission channel is past SINR treshold (past_thresh == 1), are not transmitting (np.transpose(trans_pow_matrix) == 0),
-            # and are not on an already communicating channel (trans_adj_mat == np.NINF)
-            self.eavesdroppers = np.where(past_thresh == 1, np.where(np.transpose(trans_pow_matrix) == 0, np.where(trans_adj_mat == np.NINF,1,0), 0), 0)
-        else:
-            self.eavesdroppers_response = np.where(past_thresh == 1, np.where(np.transpose(trans_pow_matrix) == 0, np.where(trans_adj_mat == np.NINF,1,0), 0), 0)
         # only keep those that did try to communicate
-        successful_transmissions = np.multiply(past_thresh, trans_adj_mat)
-        successful_transmissions = np.nan_to_num(successful_transmissions)
-        np.seterr('warn')
-        return successful_transmissions
+        successful_tx_power = np.where(successful_tx, tx_adj_mat_power_db, np.NINF)
+        successful_tx_power = np.nan_to_num(successful_tx_power, nan=0.0, neginf=0.0)
+
+        # TODO check this
+        if not self.eavesdropping:
+            eavesdroppers = None
+        else:
+            eavesdroppers = np.where(successful_tx == 1,
+                                     np.where(np.transpose(power_mw) == 0,
+                                              np.where(tx_adj_mat_power_db == np.NINF, 1, 0), 0), 0)
+
+        return successful_tx_power, eavesdroppers
 
     # Given current buffer states, will pick agent with oldest AoI to communicate with
     def greedy_controller(self, selective_comms=True, transmission_probability=0.1):
         comm_choice = np.zeros((self.n_agents))
         for i in range(self.n_agents):
             my_buffer_ts = self.network_buffer[i, :, 0]
-            comm_choice[i] = np.random.choice(np.flatnonzero(my_buffer_ts == my_buffer_ts.min())) * len(self.power_levels)
+            comm_choice[i] = np.random.choice(np.flatnonzero(my_buffer_ts == my_buffer_ts.min())) * len(
+                self.power_levels)
 
         if not selective_comms:
             return comm_choice.astype(int)
         else:
             tx_prob = np.random.uniform(size=(self.n_agents,))
-            return np.where(tx_prob < transmission_probability, comm_choice.astype(int), np.arange(self.n_agents) * len(self.power_levels))
+            return np.where(tx_prob < transmission_probability, comm_choice.astype(int),
+                            np.arange(self.n_agents) * len(self.power_levels))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
     def mst_controller(self, selective_comms=True, transmission_probability=0.1):
         if self.recompute_solution or self.mst_action is None:
-            self.compute_distances()
-            self.dist = np.sqrt(self.r2)
-            G = nx.from_numpy_array(self.dist, create_using=nx.Graph())
+            distances = self.compute_distances()
+            G = nx.from_numpy_array(distances, create_using=nx.Graph())
             T = nx.minimum_spanning_tree(G)
             degrees = [val for (node, val) in T.degree()]
 
@@ -570,13 +547,15 @@ class MultiAgentEnv(gym.Env):
             return self.mst_action
         else:
             tx_prob = np.random.uniform(size=(self.n_agents,))
-            return np.where(tx_prob < transmission_probability, self.mst_action, np.arange(self.n_agents) * len(self.power_levels))
+            return np.where(tx_prob < transmission_probability, self.mst_action,
+                            np.arange(self.n_agents) * len(self.power_levels))
 
     # Chooses a random action from the action space
     def random_controller(self, transmission_probability=0.1):
-        attempted_trans = self.action_space.sample() 
+        attempted_trans = self.action_space.sample()
         tx_prob = np.random.uniform(size=(self.n_agents,))
-        return np.where(tx_prob < transmission_probability, attempted_trans, np.arange(self.n_agents) * len(self.power_levels))
+        return np.where(tx_prob < transmission_probability, attempted_trans,
+                        np.arange(self.n_agents) * len(self.power_levels))
 
     # Chooses a random action from the action space
     def roundrobin_controller(self, transmission_probability=1.0):
@@ -600,7 +579,8 @@ class MultiAgentEnv(gym.Env):
             return neopolitan_action
         else:
             tx_prob = np.random.uniform(size=(self.n_agents,))
-            return np.where(tx_prob < transmission_probability, neopolitan_action, np.arange(self.n_agents) * len(self.power_levels))
+            return np.where(tx_prob < transmission_probability, neopolitan_action,
+                            np.arange(self.n_agents) * len(self.power_levels))
 
     def find_parents(self, T, parent_ref, degrees):
         leaves = [i for i in range(self.n_agents) if degrees[i] == 1]
@@ -615,53 +595,28 @@ class MultiAgentEnv(gym.Env):
                 return parent_ref
         return self.find_parents(T, parent_ref, degrees)
 
-    def update_buffers(self, transmission_idx, response_idx=None):
-        assert (self.comm_model is "push" or self.comm_model is "tw")
+    def update_buffers(self, transmission_idx, push=True):
+        old_buffer = self.network_buffer.copy()
 
-        if self.comm_model is "push":
-            self.update_buffers_push(transmission_idx)
-
-        elif self.comm_model is "tw":
-            # Two-Way Communications can be modeled as a sequence of a push and a response
-            self.update_buffers_push(transmission_idx)
-            self.update_buffers_push(response_idx, push=False)
-
-        # my information is updated
-        self.network_buffer[:, :, 0] += np.eye(self.n_agents)
-        # TODO divide by number of transmissions per agent
-
-    def update_buffers_push(self, transmission_idx, push=True):
-        # TODO : Convert this to NumPy vector operations
-        net_buffer_cur_ts = self.network_buffer.copy()
         for i in range(self.n_agents):
-            if push:
-                agent_idxes = [transmission_idx[i]]
-            else:
-                agent_idxes = transmission_idx[i][0]
-
-            # j is the agent that will receive i's buffer
-            for j in agent_idxes:
-                if i != j:
-                    for k in range(self.n_agents):
-                        # if received info is newer than known info
-                        if net_buffer_cur_ts[i, k, 0] > self.network_buffer[j, k, 0]:
-                            self.network_buffer[j, k, :] = net_buffer_cur_ts[i, k, :]
-                    self.network_buffer[j, i, 1] = j
-                    # agents_information[j, 5] = successful_transmissions[i, j]  # TODO update transmit power
+            self.update_receiver_buffers(old_buffer, i, transmission_idx[i])
 
         if self.eavesdropping:
             if push:
                 eavesdroppers = self.eavesdroppers
             else:
                 eavesdroppers = self.eavesdroppers_response
-            for l in range(self.n_agents):
-                for m in range(self.n_agents):
-                    if l != m and eavesdroppers[l,m] == 1:
-                        for n in range(self.n_agents):
-                            # if received info is newer than known info
-                            if net_buffer_cur_ts[l, n, 0] > self.network_buffer[m, n, 0]:
-                                self.network_buffer[m, n, :] = net_buffer_cur_ts[l, n, :]
-                        self.network_buffer[m, l, 1] = m
+
+            for i in range(self.n_agents):
+                self.update_receiver_buffers(old_buffer, i, np.where(eavesdroppers[i] == 1)[0])
+
+    def update_receiver_buffers(self, old_buffer, tx_idx, receivers):
+        if len(receivers) == 0:
+            return
+        self.network_buffer[receivers, :, :] = np.where(
+            (old_buffer[tx_idx, :, 0] > self.network_buffer[receivers, :, 0])[:, :, np.newaxis],
+            old_buffer[tx_idx, :, :][np.newaxis, :], self.network_buffer[receivers, :, :])
+        self.network_buffer[receivers, tx_idx, 1] = receivers
 
     def find_tree_hops(self):
         total_depth = 0
@@ -691,15 +646,15 @@ class MultiAgentEnv(gym.Env):
 
     def find_power_levels(self):
         # returns python list of the various power levels expressed in dBm
-        fraction_of_rmax = [1, 0.5, .25, .125] #, 0.0625, 0.03125]
         power_levels = []
-        for i in fraction_of_rmax:
-            power_levels.append(self.find_power_level_by_dist(i * self.r_max * 2 * np.sqrt(2))) # Should this be r_max * 2 sqrt(2) to cover diagonal?
+        for i in self.fraction_of_rmax:
+            power_levels.append(self.find_power_level_by_dist(
+                i * self.r_max * 2 * np.sqrt(2)))  # Should this be r_max * 2 sqrt(2) to cover diagonal?
         return np.array(power_levels)
 
     def find_power_level_by_dist(self, distance):
         free_space_path_loss = 10 * self.path_loss_exponent * np.log10(distance) + 20 * np.log10(
-                                    self.carrier_frequency_ghz * 10 ** 9) - 147.55  # dB
+            self.carrier_frequency_ghz * 10 ** 9) - 147.55  # dB
         channel_gain = np.power(10, free_space_path_loss / 10)  # this is now a unitless ratio
         gamma = np.power(10, self.min_SINR / 10)
 
