@@ -31,8 +31,11 @@ class MultiAgentEnv(gym.Env):
 
         # default problem parameters
         self.n_agents = 20  # int(config['network_size'])
+        self.n_nodes = self.n_agents * self.n_agents
         self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
+
+        self.edge_features = np.zeros((self.n_nodes, 1))
 
         self.fraction_of_rmax = [0.25, .125]  # , 0.0625, 0.03125]
 
@@ -220,41 +223,22 @@ class MultiAgentEnv(gym.Env):
         Compute local buffers as a Dict of representing a graph.
         :return: A dict representing the current routing buffers.
         """
-        n = network_buffer.shape[0]
-        n_nodes = n * n
-
-        senders = [0] * n_nodes  # Indices of nodes transmitting the edges
-        receivers = [0] * n_nodes  # Indices of nodes receiving the edges
-        # TODO vectorize this double for loop
-        idx = 0
-        for i in range(n):
-            for j in range(n):
-                agent_buffer = network_buffer[i, :, :]
-                # agent_buffer[j,0] should always be the timestep delay
-                # agent_buffer[j,1] should always be the parent node (transmitter)
-
-                if agent_buffer[j, 1] != -1:
-                    senders[idx] = i * n + agent_buffer[j, 1]
-                    receivers[idx] = i * n + j
-                else:
-                    senders[idx] = -1
-                    receivers[idx] = -1
-                idx += 1
+        no_edge = np.not_equal(network_buffer[:, :, 1], -1)
+        senders = np.where(no_edge, self.n_agents * np.arange(self.n_agents)[:, np.newaxis] + network_buffer[:, :, 1],-1)
+        receivers = np.where(no_edge, np.reshape(np.arange(self.n_nodes), (self.n_agents, self.n_agents)), -1)
 
         # TODO add distances between nodes as edge features
-        edges = np.zeros(shape=(len(receivers), 1))
-        nodes = np.reshape(network_buffer, (n_nodes, -1))
+        step = np.reshape([self.timestep], (1, 1))
+        senders = np.reshape(senders.flatten(), (-1, 1))
+        receivers = np.reshape(receivers.flatten(), (-1, 1))
+        nodes = np.reshape(network_buffer, (self.n_nodes, -1))
         nodes[:, 1] = 0  # zero out the neighbor node index
 
-        step = np.reshape([self.timestep], (1, 1))
-        senders = np.reshape(senders, (-1, 1))
-        receivers = np.reshape(receivers, (-1, 1))
-
         data_dict = {
-            "n_node": n_nodes,
+            "n_node": self.n_nodes,
             "senders": senders,
             "receivers": receivers,
-            "edges": edges,
+            "edges": self.edge_features,
             "nodes": nodes,
             "globals": step
         }
