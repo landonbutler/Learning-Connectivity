@@ -75,7 +75,7 @@ class AggregationNet(snt.AbstractModule):
             core_b = blocks.NodeBlock(
                 node_model_fn=lambda: Identity(),
                 use_received_edges=True,
-                use_sent_edges=True,
+                use_sent_edges=False,
                 use_nodes=False,
                 use_globals=False,
                 received_edges_reducer=reducer,
