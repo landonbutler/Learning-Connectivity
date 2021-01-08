@@ -34,7 +34,7 @@ class MultiAgentEnv(gym.Env):
         self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
 
-        self.fraction_of_rmax = [0.5, .125]  # , 0.0625, 0.03125]
+        self.fraction_of_rmax = [0.25, .125]  # , 0.0625, 0.03125]
 
         # initialize state matrices
         self.x = np.zeros((self.n_agents, self.n_features))
@@ -154,6 +154,17 @@ class MultiAgentEnv(gym.Env):
         :param attempted_transmissions: n-vector of index of who to communicate with
         :return: Environment observations as a dict representing the graph.
         """
+        assert (self.comm_model is "push" or self.comm_model is "tw")
+
+        if self.comm_model is "tw":
+            self.timestep = self.timestep + 0.5
+            # my information is updated
+            self.network_buffer[:, :, 0] += np.eye(self.n_agents) * 0.5
+
+        if self.comm_model is "push":
+            self.timestep = self.timestep + 1.0
+            # my information is updated
+            self.network_buffer[:, :, 0] += np.eye(self.n_agents) * 1.0
 
         self.attempted_transmissions = attempted_transmissions // len(self.power_levels)
         transmission_indexes = attempted_transmissions // len(self.power_levels)
@@ -163,22 +174,18 @@ class MultiAgentEnv(gym.Env):
         if self.is_interference:
             # calculates interference from attempted transmissions
             transmission_indexes, response_indexes = self.interference(self.attempted_transmissions, self.tx_power)
+
         self.successful_transmissions = transmission_indexes
 
-        assert (self.comm_model is "push" or self.comm_model is "tw")
-
-        if self.comm_model is "push":
-            self.update_buffers(transmission_indexes)
+        self.update_buffers(transmission_indexes)
 
         if self.comm_model is "tw":
             # Two-Way Communications can be modeled as a sequence of a push and a response
-            self.update_buffers(transmission_indexes)
+            self.timestep = self.timestep + 0.5
+            # my information is updated
+            self.network_buffer[:, :, 0] += np.eye(self.n_agents) * 0.5
+
             self.update_buffers(response_indexes, push=False)
-
-        # my information is updated
-        self.network_buffer[:, :, 0] += np.eye(self.n_agents)
-
-        self.timestep = self.timestep + 1
 
         if not self.network_connected:
             self.is_network_connected()
@@ -484,14 +491,14 @@ class MultiAgentEnv(gym.Env):
         np.fill_diagonal(tx_adj_mat, np.NINF)
 
         successful_tx_power, self.eavesdroppers = self.calculate_sinr(tx_adj_mat)
-        tx_idx = [np.nonzero(t)[0] for t in successful_tx_power]
+        tx_idx = [np.nonzero(t)[0] for t in np.nan_to_num(successful_tx_power, nan=0.0, neginf=0.0)]
 
         if self.comm_model is "push":
             resp_idx = None
         else:
-            resp_adj_mat = np.transpose(np.where(successful_tx_power, tx_adj_mat, np.NINF))
+            resp_adj_mat = np.transpose(np.where(np.not_equal(successful_tx_power, np.NINF), tx_adj_mat, np.NINF))
             successful_responses, self.eavesdroppers_response = self.calculate_sinr(resp_adj_mat)
-            resp_idx = [np.nonzero(t)[0] for t in successful_responses]
+            resp_idx = [np.nonzero(t)[0] for t in np.nan_to_num(successful_responses, nan=0.0, neginf=0.0)]
 
         return tx_idx, resp_idx
 
@@ -515,7 +522,7 @@ class MultiAgentEnv(gym.Env):
 
         # only keep those that did try to communicate
         successful_tx_power = np.where(successful_tx, tx_adj_mat_power_db, np.NINF)
-        successful_tx_power = np.nan_to_num(successful_tx_power, nan=0.0, neginf=0.0)
+        # successful_tx_power = np.nan_to_num(successful_tx_power, nan=0.0, neginf=0.0)
 
         # TODO check this
         if not self.eavesdropping:
@@ -572,9 +579,9 @@ class MultiAgentEnv(gym.Env):
         center_agent = np.argmin(np.power(self.x[:,0], 2) +  np.power(self.x[:,1], 2))
         tx_choice = np.arange(self.n_agents) * len(self.power_levels)
         tx_idx = self.timestep % (self.n_agents - 1)
-        if tx_idx >= center_agent:
-            tx_idx += 1
-        tx_choice[tx_idx] = center_agent * len(self.power_levels)
+        tx_idx = tx_idx if tx_idx < center_agent else tx_idx + 1
+
+        tx_choice[int(tx_idx)] = center_agent * len(self.power_levels)
         return tx_choice
 
     # 33% MST, 33% Greedy, 33% Random
@@ -612,6 +619,9 @@ class MultiAgentEnv(gym.Env):
             self.update_receiver_buffers(i, transmission_idx[i])
 
         if self.eavesdropping:
+
+            # self.old_buffer[:] = self.network_buffer
+
             if push:
                 eavesdroppers = self.eavesdroppers
             else:
