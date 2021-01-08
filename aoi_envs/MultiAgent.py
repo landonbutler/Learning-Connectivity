@@ -84,6 +84,9 @@ class MultiAgentEnv(gym.Env):
         self.saved_pos = None
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
+        self.old_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
+        self.relative_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
+
         self.timestep = 0
         self.avg_transmit_distance = 0
 
@@ -188,22 +191,22 @@ class MultiAgentEnv(gym.Env):
         :return: A dict representing the current routing buffers.
         """
         # timesteps and positions won't be relative within env, but need to be when passed out
-        relative_network_buffer = self.network_buffer.copy()
-        relative_network_buffer[:, :, 0] = self.network_buffer[:, :, 0] - self.timestep
+        self.relative_buffer[:] = self.network_buffer
+        self.relative_buffer[:, :, 0] = self.network_buffer[:, :, 0] - self.timestep
 
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
-        relative_network_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1,
+        self.relative_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1,
                                                                                                      2)
-        relative_network_buffer[:, :, 2:4] = relative_network_buffer[:, :, 2:4] / self.r_max
+        self.relative_buffer[:, :, 2:4] = self.relative_buffer[:, :, 2:4] / self.r_max
 
         if self.mobile_agents:
-            relative_network_buffer[:, :, 4:6] = self.network_buffer[:, :, 4:6] - self.x[:, 2:4].reshape(self.n_agents,
+            self.relative_buffer[:, :, 4:6] = self.network_buffer[:, :, 4:6] - self.x[:, 2:4].reshape(self.n_agents,
                                                                                                          1,
                                                                                                          2)
-            relative_network_buffer[:, :, 4:6] = relative_network_buffer[:, :, 4:6] / self.r_max
+            self.relative_buffer[:, :, 4:6] = self.relative_buffer[:, :, 4:6] / self.r_max
 
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
-        return self.map_to_observation_space(relative_network_buffer)
+        return self.map_to_observation_space(self.relative_buffer)
 
     def map_to_observation_space(self, network_buffer):
         """
@@ -213,19 +216,23 @@ class MultiAgentEnv(gym.Env):
         n = network_buffer.shape[0]
         n_nodes = n * n
 
-        senders = []  # Indices of nodes transmitting the edges
-        receivers = []  # Indices of nodes receiving the edges
+        senders = [0] * n_nodes  # Indices of nodes transmitting the edges
+        receivers = [0] * n_nodes  # Indices of nodes receiving the edges
+        # TODO vectorize this double for loop
+        idx = 0
         for i in range(n):
             for j in range(n):
                 agent_buffer = network_buffer[i, :, :]
                 # agent_buffer[j,0] should always be the timestep delay
                 # agent_buffer[j,1] should always be the parent node (transmitter)
+
                 if agent_buffer[j, 1] != -1:
-                    senders.append(i * n + agent_buffer[j, 1])
-                    receivers.append(i * n + j)
+                    senders[idx] = i * n + agent_buffer[j, 1]
+                    receivers[idx] = i * n + j
                 else:
-                    senders.append(-1)
-                    receivers.append(-1)
+                    senders[idx] = -1
+                    receivers[idx] = -1
+                idx += 1
 
         # TODO add distances between nodes as edge features
         edges = np.zeros(shape=(len(receivers), 1))
@@ -273,6 +280,9 @@ class MultiAgentEnv(gym.Env):
                                                 PENALTY)  # motivates agents to get information in the first time step
 
         self.network_buffer[:, :, 1] = -1  # no parent references yet
+
+        self.old_buffer[:] = self.network_buffer
+        self.relative_buffer[:] = self.network_buffer
 
         if self.fig != None:
             plt.close(self.fig)
@@ -596,10 +606,10 @@ class MultiAgentEnv(gym.Env):
         return self.find_parents(T, parent_ref, degrees)
 
     def update_buffers(self, transmission_idx, push=True):
-        old_buffer = self.network_buffer.copy()
+        self.old_buffer[:] = self.network_buffer
 
         for i in range(self.n_agents):
-            self.update_receiver_buffers(old_buffer, i, transmission_idx[i])
+            self.update_receiver_buffers(i, transmission_idx[i])
 
         if self.eavesdropping:
             if push:
@@ -608,14 +618,14 @@ class MultiAgentEnv(gym.Env):
                 eavesdroppers = self.eavesdroppers_response
 
             for i in range(self.n_agents):
-                self.update_receiver_buffers(old_buffer, i, np.where(eavesdroppers[i] == 1)[0])
+                self.update_receiver_buffers(i, np.where(eavesdroppers[i] == 1)[0])
 
-    def update_receiver_buffers(self, old_buffer, tx_idx, receivers):
+    def update_receiver_buffers(self, tx_idx, receivers):
         if len(receivers) == 0:
             return
         self.network_buffer[receivers, :, :] = np.where(
-            (old_buffer[tx_idx, :, 0] > self.network_buffer[receivers, :, 0])[:, :, np.newaxis],
-            old_buffer[tx_idx, :, :][np.newaxis, :], self.network_buffer[receivers, :, :])
+            (self.old_buffer[tx_idx, :, 0] > self.network_buffer[receivers, :, 0])[:, :, np.newaxis],
+            self.old_buffer[tx_idx, :, :][np.newaxis, :], self.network_buffer[receivers, :, :])
         self.network_buffer[receivers, tx_idx, 1] = receivers
 
     def find_tree_hops(self):
