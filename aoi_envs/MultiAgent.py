@@ -270,7 +270,7 @@ class MultiAgentEnv(gym.Env):
                                                     self.network_buffer[:, :, 3])
 
         self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0,
-                                                -10)  # motivates agents to get information in the first time step
+                                                PENALTY)  # motivates agents to get information in the first time step
 
         self.network_buffer[:, :, 1] = -1  # no parent references yet
 
