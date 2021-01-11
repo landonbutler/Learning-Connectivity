@@ -24,7 +24,7 @@ load_positions = False
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, power_levels=[], eavesdropping=True):
+    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
@@ -36,8 +36,6 @@ class MultiAgentEnv(gym.Env):
 
         self.edge_features = np.zeros((self.n_nodes, 1))
 
-        self.fraction_of_rmax = [0.25]  # , 0.0625, 0.03125]
-
         # initialize state matrices
         self.x = np.zeros((self.n_agents, self.n_features))
 
@@ -47,9 +45,8 @@ class MultiAgentEnv(gym.Env):
         self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
         self.path_loss_exponent = 2
 
-        self.power_levels = np.array(power_levels)  # in dBm, where the 0th index is default power level
-        if len(power_levels) is 0:
-            self.power_levels = self.find_power_levels()  # method finding
+        self.fraction_of_rmax = fractional_power_levels  #  [0.25, 0.125]
+        self.power_levels = self.find_power_levels()  # method finding
 
         self.action_space = spaces.MultiDiscrete([self.n_agents * len(self.power_levels)] * self.n_agents)
         # each agent has their own action space of a n_agent vector of weights

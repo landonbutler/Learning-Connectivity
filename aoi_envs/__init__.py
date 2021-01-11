@@ -72,16 +72,16 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
 )
 
-register(
-    id='PowerLevelsEnv-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'power_levels': []},
-)
+# register(
+#     id='PowerLevelsEnv-v0',
+#     entry_point='aoi_envs:MultiAgentEnv',
+#     max_episode_steps=MAX_EPISODE_STEPS,
+#     kwargs={'power_levels': []},
+# )
 
 register(
-    id='EavesdroppingEnv-v0',
+    id='EavesEnv-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'power_levels': [], 'eavesdropping':True},
+    kwargs={'power_levels': [0.25, 0.125], 'eavesdropping': True},
 )

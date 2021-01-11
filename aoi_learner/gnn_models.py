@@ -20,6 +20,15 @@ class Identity(snt.AbstractModule):
     def _build(self, inputs):
         return tf.identity(inputs)
 
+# class SumSentReceived(snt.AbstractModule):
+#     """Sonnet module implementing the identity."""
+#     def __init__(self, name="sumedges"):
+#         super(SumSentReceived, self).__init__(name=name)
+#
+#     def _build(self, inputs):
+#         return inputs[:, 0:16] + inputs[:,16:]
+#     tf.slice(inputs, )
+
 
 class AggregationNet(snt.AbstractModule):
     """
