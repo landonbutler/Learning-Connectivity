@@ -16,17 +16,15 @@ font = {'family': 'sans-serif',
 EPISODE_LENGTH = 500
 N_NODE_FEAT = 6
 N_EDGE_FEAT = 1
-
+PENALTY = 0
 
 save_positions = False
 load_positions = False
 
-PENALTY = -10
-
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, power_levels=[], eavesdropping=False):
+    def __init__(self, power_levels=[], eavesdropping=True):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
@@ -34,10 +32,11 @@ class MultiAgentEnv(gym.Env):
         self.n_nodes = self.n_agents * self.n_agents
         self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
+        self.n_edges = self.n_agents * self.n_agents
 
         self.edge_features = np.zeros((self.n_nodes, 1))
 
-        self.fraction_of_rmax = [0.25, .125]  # , 0.0625, 0.03125]
+        self.fraction_of_rmax = [0.25]  # , 0.0625, 0.03125]
 
         # initialize state matrices
         self.x = np.zeros((self.n_agents, self.n_features))
@@ -62,12 +61,12 @@ class MultiAgentEnv(gym.Env):
                                      dtype=np.float32)),
                 # upperbound, n fully connected trees (n-1) edges
                 # To-Do ensure these bounds don't affect anything
-                ("edges", spaces.Box(shape=(self.n_agents * self.n_agents, N_EDGE_FEAT), low=-np.Inf, high=np.Inf,
+                ("edges", spaces.Box(shape=(self.n_edges, N_EDGE_FEAT), low=-np.Inf, high=np.Inf,
                                      dtype=np.float32)),
                 # senders and receivers will each be one endpoint of an edge, and thus should be same size as edges
-                ("senders", spaces.Box(shape=(self.n_agents * self.n_agents, 1), low=0, high=self.n_agents,
+                ("senders", spaces.Box(shape=(self.n_edges, 1), low=0, high=self.n_agents,
                                        dtype=np.float32)),
-                ("receivers", spaces.Box(shape=(self.n_agents * self.n_agents, 1), low=0, high=self.n_agents,
+                ("receivers", spaces.Box(shape=(self.n_edges, 1), low=0, high=self.n_agents,
                                          dtype=np.float32)),
                 ("globals", spaces.Box(shape=(1, 1), low=0, high=EPISODE_LENGTH, dtype=np.float32)),
             ]
@@ -215,6 +214,8 @@ class MultiAgentEnv(gym.Env):
                                                                                                          2)
             self.relative_buffer[:, :, 4:6] = self.relative_buffer[:, :, 4:6] / self.r_max
 
+        # self.relative_buffer = np.abs(self.relative_buffer)
+
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
         return self.map_to_observation_space(self.relative_buffer)
 
@@ -233,6 +234,10 @@ class MultiAgentEnv(gym.Env):
         receivers = np.reshape(receivers.flatten(), (-1, 1))
         nodes = np.reshape(network_buffer, (self.n_nodes, -1))
         nodes[:, 1] = 0  # zero out the neighbor node index
+
+        # symmetric_senders = np.concatenate([senders, receivers], axis=0)
+        # symmetric_receivers = np.concatenate([receivers, senders], axis=0)
+
 
         data_dict = {
             "n_node": self.n_nodes,
@@ -428,7 +433,7 @@ class MultiAgentEnv(gym.Env):
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             if save_plots:
-                plt.savefig('visuals/bufferTrees/ts' + str(self.timestep) + '.png')
+                plt.savefig('visuals/bufferTrees/ts' + str(int(self.timestep)) + '.png')
 
     def get_successful_communication_percent(self):
         count_succ_comm = 0

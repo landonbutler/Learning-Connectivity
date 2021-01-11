@@ -103,7 +103,7 @@ def save_gif(model_number, timestep, fp, controller):
     filename = fp + controller + str(model_number) + '.gif'
     with imageio.get_writer(filename, mode='I', duration=.3) as writer:
         for i in range(1, timestep):
-            fileloc = fp + 'ts' +str(i) +'.png'
+            fileloc = fp + 'ts' + str(int(i)) + '.png'
             image = imageio.imread(fileloc)
             writer.append_data(image)
             os.remove(fileloc)
@@ -129,6 +129,7 @@ if __name__ == '__main__':
         # model_name = 'models/rl_Landon/EVE_GNN_R500_4/EVE_GNN_R500_4.pkl'
         model_name = 'models/power8_1/ckpt/ckpt_170.pkl'
         model_name = 'models/power8_3/ckpt/ckpt_160.pkl'
+        model_name = 'models/nl10_025_1/ckpt/ckpt_200.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)
