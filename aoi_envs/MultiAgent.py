@@ -198,18 +198,15 @@ class MultiAgentEnv(gym.Env):
         """
         # timesteps and positions won't be relative within env, but need to be when passed out
         self.relative_buffer[:] = self.network_buffer
-        self.relative_buffer[:, :, 0] = self.network_buffer[:, :, 0] - self.timestep
+        self.relative_buffer[:, :, 0] -= self.timestep
 
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
-        self.relative_buffer[:, :, 2:4] = self.network_buffer[:, :, 2:4] - self.x[:, 0:2].reshape(self.n_agents, 1,
-                                                                                                     2)
-        self.relative_buffer[:, :, 2:4] = self.relative_buffer[:, :, 2:4] / self.r_max
+        self.relative_buffer[:, :, 2:4] -= self.x[:, 0:2].reshape(self.n_agents, 1, 2)
+        self.relative_buffer[:, :, 2:4] /= self.r_max
 
         if self.mobile_agents:
-            self.relative_buffer[:, :, 4:6] = self.network_buffer[:, :, 4:6] - self.x[:, 2:4].reshape(self.n_agents,
-                                                                                                         1,
-                                                                                                         2)
-            self.relative_buffer[:, :, 4:6] = self.relative_buffer[:, :, 4:6] / self.r_max
+            self.relative_buffer[:, :, 4:6] -= self.x[:, 2:4].reshape(self.n_agents, 1, 2)
+            self.relative_buffer[:, :, 4:6] /= self.r_max
 
         # self.relative_buffer = np.abs(self.relative_buffer)
 
