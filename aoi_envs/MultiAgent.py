@@ -122,6 +122,8 @@ class MultiAgentEnv(gym.Env):
         self.attempted_transmissions = None
         self.successful_transmissions = None
 
+        self.initial_formation = "Clusters" # Random, Grid, or Clusters
+
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
         self.save_plots = False
@@ -247,8 +249,22 @@ class MultiAgentEnv(gym.Env):
         return data_dict
 
     def reset(self):
+        if self.initial_formation is "Grid":
+            x,y = self.compute_grid_with_bias(1,1, self.n_agents)
+            self.x[:,0] = x
+            self.x[:,1] = y
+        elif self.initial_formation is "Clusters":
+            n_clusters = int(np.sqrt(self.n_agents))
+            cluster_offset = self.r_max / (n_clusters * 1.5)
+            cent_x, cent_y = self.compute_grid_with_bias(1.5, 1.5, n_clusters, additional_offset = cluster_offset)
+            max_agents_per_cluster = int(np.ceil(self.n_agents / n_clusters))
 
-        self.x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
+            agent_cluster_assignment_x = np.reshape(np.tile(cent_x, max_agents_per_cluster).T, (max_agents_per_cluster * n_clusters))[:self.n_agents]
+            agent_cluster_assignment_y = np.reshape(np.tile(cent_y, max_agents_per_cluster).T, (max_agents_per_cluster * n_clusters))[:self.n_agents]
+            self.x[:,0] = agent_cluster_assignment_x + np.random.uniform(-cluster_offset, cluster_offset, size=(self.n_agents,))
+            self.x[:,1] = agent_cluster_assignment_y + np.random.uniform(-cluster_offset, cluster_offset, size=(self.n_agents,))
+        else:
+            self.x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
         self.mst_action = None
         self.network_connected = False
         self.timestep = 0
@@ -683,6 +699,24 @@ class MultiAgentEnv(gym.Env):
             c = color
         c = colorsys.rgb_to_hls(*mc.to_rgb(c))
         return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
+
+    def compute_grid_with_bias(self, x_offset_coef, y_offset_coef, n_points, additional_offset = 0):
+        n_rows = 0
+        n_cols = 0
+        for i in range(int(np.sqrt(n_points)), 0, -1):
+            if n_points % i is 0:
+                n_rows = i
+                n_cols = int(n_points / i)
+                break
+        x_offset = self.r_max / (n_rows * x_offset_coef)
+        y_offset = self.r_max / (n_cols * y_offset_coef)
+        x = np.linspace(-self.r_max + x_offset + additional_offset, self.r_max - x_offset - additional_offset, num = n_rows)
+        y = np.linspace(-self.r_max + y_offset + additional_offset, self.r_max - y_offset - additional_offset, num = n_cols)
+        xx, yy = np.meshgrid(x,y)
+        coords = np.array((xx.ravel(), yy.ravel())).T
+        biased_x_pos = coords[:,0] + np.random.uniform(-x_offset, x_offset, size=(n_points,))
+        biased_y_pos = coords[:,1] + np.random.uniform(-y_offset, y_offset, size=(n_points,))
+        return biased_x_pos, biased_y_pos
 
     @staticmethod
     def unpack_obs(obs, ob_space):
