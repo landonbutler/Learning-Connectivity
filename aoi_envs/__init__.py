@@ -2,9 +2,16 @@ from aoi_envs.MultiAgent import MultiAgentEnv
 from aoi_envs.Mobile import MobileEnv
 from aoi_envs.StationaryKnown import StationaryKnownEnv
 from aoi_envs.Flocking import FlockingEnv
+from aoi_envs.LastAttempt import LastAttemptEnv
 from gym.envs.registration import register
 
 MAX_EPISODE_STEPS = 500
+
+register(
+    id='LastAttemptEnv-v0',
+    entry_point='aoi_envs:LastAttemptEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+)
 
 register(
     id='StationaryEnv-v0',
