@@ -122,7 +122,7 @@ class MultiAgentEnv(gym.Env):
         self.attempted_transmissions = None
         self.successful_transmissions = None
 
-        self.initial_formation = "Clusters" # Random, Grid, or Clusters
+        self.initial_formation = "Random" # Random, Grid, or Clusters
 
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
