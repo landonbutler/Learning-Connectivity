@@ -35,9 +35,7 @@ def eval_model(env, model, n_episodes):
     return results
 
 
-def find_best_model(all_ckpt_dir, test_env):
-
-    n_episodes = 50
+def find_best_model(all_ckpt_dir, test_env, n_episodes=50):
 
     # Get the path of the last checkpoint.
     try:
@@ -101,7 +99,13 @@ def find_best_model(all_ckpt_dir, test_env):
         # if i is not best_ckpt:
             # os.remove(i)
 
+
+
 if __name__ == '__main__':
+
+    env = gym.make('StationaryEnv-v0')
+    env = gym.wrappers.FlattenDictWrapper(env, dict_keys=env.env.keys)
+
     # Specify pre-trained model checkpoint folder (containing all checkpoints).
     all_ckpt_dir = 'models/' + sys.argv[1] + '/ckpt'
-    find_best_model(all_ckpt_dir)
+    find_best_model(all_ckpt_dir, env, 10)

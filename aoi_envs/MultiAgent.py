@@ -229,10 +229,6 @@ class MultiAgentEnv(gym.Env):
         nodes = np.reshape(network_buffer, (self.n_nodes, -1))
         nodes[:, 1] = 0  # zero out the neighbor node index
 
-        # symmetric_senders = np.concatenate([senders, receivers], axis=0)
-        # symmetric_receivers = np.concatenate([receivers, senders], axis=0)
-
-
         data_dict = {
             "n_node": self.n_nodes,
             "senders": senders,

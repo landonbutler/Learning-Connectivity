@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     # Specify pre-trained model checkpoint folder.
     ckpt_dir = 'models/rl_nonlinear_9_3/ckpt'
-    n_episodes = 10
+    n_episodes = 100
 
     # Get the path of the last checkpoint.
     try:
