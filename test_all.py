@@ -39,7 +39,7 @@ def find_best_model(all_ckpt_dir, test_env, n_episodes=50):
 
     # Get the path of the last checkpoint.
     try:
-        ckpt_list = sorted(glob.glob(str(all_ckpt_dir) + '/*.pkl'))
+        ckpt_list = sorted(glob.glob(str(all_ckpt_dir) + '/ckpt_*.pkl'))
     except IndexError:
         print('Invalid experiment folder name!')
         raise
@@ -100,9 +100,7 @@ def find_best_model(all_ckpt_dir, test_env, n_episodes=50):
             # os.remove(i)
 
 
-
 if __name__ == '__main__':
-
     env = gym.make('StationaryEnv-v0')
     env = gym.wrappers.FlattenDictWrapper(env, dict_keys=env.env.keys)
 

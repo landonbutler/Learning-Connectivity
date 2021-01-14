@@ -8,15 +8,58 @@ from gym.envs.registration import register
 MAX_EPISODE_STEPS = 500
 
 register(
-    id='LastAttemptEnv-v0',
-    entry_point='aoi_envs:LastAttemptEnv',
+    id='StationaryEnv-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
 )
 
 register(
-    id='StationaryEnv-v0',
+    id='PowerLevelsEnv-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'power_levels': [0.25, 0.125]},
+)
+
+register(
+    id='StationaryGridEnv-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'initialization': "Grid"},
+)
+
+register(
+    id='StationaryGrid40Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'initialization': "Grid", 'num_agents': 40},
+)
+
+register(
+    id='StationaryGrid60Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'initialization': "Grid", 'num_agents': 60},
+)
+
+register(
+    id='StationaryGrid80Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'initialization': "Grid", 'num_agents': 80},
+)
+
+register(
+    id='StationaryGrid100Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'initialization': "Grid", 'num_agents': 100},
+)
+
+register(
+    id='StationaryGrid150Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'initialization': "Grid", 'num_agents': 150},
 )
 
 register(
@@ -79,16 +122,3 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
 )
 
-register(
-    id='PowerLevelsEnv-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'power_levels': [0.25, 0.125]},
-)
-
-register(
-    id='EavesEnv-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'power_levels': [0.25, 0.125], 'eavesdropping': True},
-)

@@ -18,19 +18,16 @@ N_NODE_FEAT = 6
 N_EDGE_FEAT = 1
 PENALTY = 0
 
-save_positions = False
-load_positions = False
-
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True):
+    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=20, initialization="Random"):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
-        self.n_agents = 20  # int(config['network_size'])
+        self.n_agents = num_agents  # int(config['network_size'])
         self.n_nodes = self.n_agents * self.n_agents
-        self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
+        self.r_max = 5000.0   # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
         self.n_edges = self.n_agents * self.n_agents
 
@@ -47,6 +44,8 @@ class MultiAgentEnv(gym.Env):
 
         self.fraction_of_rmax = fractional_power_levels  #  [0.25, 0.125]
         self.power_levels = self.find_power_levels()  # method finding
+
+        self.r_max *= np.sqrt(self.n_agents / 20)
 
         self.action_space = spaces.MultiDiscrete([self.n_agents * len(self.power_levels)] * self.n_agents)
         # each agent has their own action space of a n_agent vector of weights
@@ -80,7 +79,6 @@ class MultiAgentEnv(gym.Env):
 
         self.diff = None
         self.r2 = None
-        self.saved_pos = None
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         self.old_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
@@ -122,12 +120,16 @@ class MultiAgentEnv(gym.Env):
         self.attempted_transmissions = None
         self.successful_transmissions = None
 
-        self.initial_formation = "Random" # Random, Grid, or Clusters
+        self.initial_formation = initialization
+        # self.initial_formation = "Grid"  # Random, Grid, or Clusters
+        # self.initial_formation = "Clusters"
 
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
         self.save_plots = False
         self.seed()
+
+
 
     # def params_from_cfg(self, args):
     #     self.action_space = spaces.Box(low=-self.max_accel, high=self.max_accel, shape=(2 * self.n_agents,),
@@ -201,6 +203,7 @@ class MultiAgentEnv(gym.Env):
         # timesteps and positions won't be relative within env, but need to be when passed out
         self.relative_buffer[:] = self.network_buffer
         self.relative_buffer[:, :, 0] -= self.timestep
+        self.relative_buffer[:, :, 0] /= EPISODE_LENGTH
 
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
         self.relative_buffer[:, :, 2:4] -= self.x[:, 0:2].reshape(self.n_agents, 1, 2)
@@ -209,8 +212,6 @@ class MultiAgentEnv(gym.Env):
         if self.mobile_agents:
             self.relative_buffer[:, :, 4:6] -= self.x[:, 2:4].reshape(self.n_agents, 1, 2)
             self.relative_buffer[:, :, 4:6] /= self.r_max
-
-        # self.relative_buffer = np.abs(self.relative_buffer)
 
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
         return self.map_to_observation_space(self.relative_buffer)
@@ -261,10 +262,6 @@ class MultiAgentEnv(gym.Env):
         self.mst_action = None
         self.network_connected = False
         self.timestep = 0
-        if load_positions:
-            self.x = np.load("saved_positions.npy")
-        elif save_positions:
-            np.save("saved_positions", self.x)
 
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         if self.known_initial_positions:
@@ -278,9 +275,8 @@ class MultiAgentEnv(gym.Env):
                                                     self.x[:, 1].reshape(self.n_agents, 1),
                                                     self.network_buffer[:, :, 3])
 
-        self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0,
-                                                PENALTY)  # motivates agents to get information in the first time step
-
+        # motivates agents to get information in the first time step
+        self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0, PENALTY)
         self.network_buffer[:, :, 1] = -1  # no parent references yet
 
         self.old_buffer[:] = self.network_buffer
@@ -294,8 +290,6 @@ class MultiAgentEnv(gym.Env):
         self.eavesdroppers = None
         self.eavesdroppers_response = None
 
-        # if self.is_interference:
-        #     self.compute_distances()
         return self.get_relative_network_buffer_as_dict()
 
     def render(self, mode='human', save_plots=False, controller="Random"):
