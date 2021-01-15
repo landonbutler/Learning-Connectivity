@@ -7,7 +7,7 @@ N_NODE_FEAT = 6
 class MobileEnv(MultiAgentEnv):
 
     def __init__(self, agent_velocity=1.0):
-        super().__init__(eavesdropping=True, fractional_power_levels=[0.25])
+        super().__init__(eavesdropping=True, fractional_power_levels=[0.25], initialization='Grid')
         self.max_v = agent_velocity * self.r_max  # for strictly mobile agents, this is the constant velocity
         self.ts_length = 0.01
 

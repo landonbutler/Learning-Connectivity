@@ -40,7 +40,7 @@ def make_env():
     elif args.flocking_env:
         env_name = "FlockingEnv-v0"
     else:
-        env_name = "StationaryEnv-v0"
+        env_name = "StationaryGridEnv-v0"
     print(env_name)
     my_env = gym.make(env_name)
     my_env = gym.wrappers.FlattenDictWrapper(my_env, dict_keys=my_env.env.keys)
@@ -132,7 +132,7 @@ if __name__ == '__main__':
         model_name = 'models/nl10_025_1/ckpt/ckpt_200.pkl'
         model_name = 'models/rl_Landon/EVE_GNN_5.pkl'
         model_name = 'models/nl11_2/ckpt/ckpt_180.pkl'
-        model_name = 'models/nl12_4/ckpt/ckpt_030.pkl'
+        model_name = 'models/nl12_4/ckpt/ckpt_040.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)

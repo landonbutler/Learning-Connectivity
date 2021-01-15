@@ -49,7 +49,7 @@ def find_best_model(all_ckpt_dir, test_env, n_episodes=50):
     rewards = []
 
     # Test every 10th checkpoint.
-    ckpt_list = ckpt_list[0::10]
+    ckpt_list = ckpt_list[0::5]
   
     for ckpt in ckpt_list:
         # load the dictionary of parameters from file
@@ -101,7 +101,7 @@ def find_best_model(all_ckpt_dir, test_env, n_episodes=50):
 
 
 if __name__ == '__main__':
-    env = gym.make('StationaryEnv-v0')
+    env = gym.make('StationaryGridEnv-v0')
     env = gym.wrappers.FlattenDictWrapper(env, dict_keys=env.env.keys)
 
     # Specify pre-trained model checkpoint folder (containing all checkpoints).
