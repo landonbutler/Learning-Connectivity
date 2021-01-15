@@ -468,7 +468,7 @@ class MultiAgentEnv(gym.Env):
     def instant_cost(self):  # average time_delay for a piece of information plus comm distance
         if self.flocking:
             # Uses flocking reward as training
-            return np.sum(np.var(self.x[:, 2:4] / self.r_max, axis=0)**2)
+            return np.sum(np.var(self.x[:, 2:4] / self.r_max, axis=0))
         elif self.is_interference:
             return self.compute_current_aoi()
         else:
