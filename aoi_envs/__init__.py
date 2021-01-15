@@ -1,8 +1,5 @@
 from aoi_envs.MultiAgent import MultiAgentEnv
 from aoi_envs.Mobile import MobileEnv
-from aoi_envs.StationaryKnown import StationaryKnownEnv
-from aoi_envs.Flocking import FlockingEnv
-from aoi_envs.LastAttempt import LastAttemptEnv
 from gym.envs.registration import register
 
 MAX_EPISODE_STEPS = 500
@@ -111,14 +108,9 @@ register(
 )
 
 register(
-    id='StationaryKnownEnv-v0',
-    entry_point='aoi_envs:StationaryKnownEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-)
-
-register(
     id='FlockingEnv-v0',
-    entry_point='aoi_envs:FlockingEnv',
+    entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 3.0, 'initialization': 'Grid', 'flocking': True, 'biased_velocities': False},
 )
 

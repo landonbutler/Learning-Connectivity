@@ -6,8 +6,8 @@ N_NODE_FEAT = 6
 
 class MobileEnv(MultiAgentEnv):
 
-    def __init__(self, agent_velocity=1.0):
-        super().__init__(eavesdropping=True, fractional_power_levels=[0.25], initialization='Grid')
+    def __init__(self, agent_velocity=1.0, initialization='Random', biased_velocities=False, flocking=False):
+        super().__init__(eavesdropping=True, fractional_power_levels=[0.25], initialization=initialization)
         self.max_v = agent_velocity * self.r_max  # for strictly mobile agents, this is the constant velocity
         self.ts_length = 0.01
 
@@ -16,8 +16,8 @@ class MobileEnv(MultiAgentEnv):
         self.mobile_agents = True
         self.x = np.zeros((self.n_agents, self.n_features))
 
-        self.flocking = False
-        self.biased_velocities = False
+        self.flocking = flocking
+        self.biased_velocities = biased_velocities
 
     def reset(self):
         super().reset()
@@ -27,7 +27,6 @@ class MobileEnv(MultiAgentEnv):
             if self.biased_velocities:
                 bias = np.random.uniform(0.5 * -self.max_v, 0.5 * self.max_v, size=(1, 2))
                 self.x[:, 2:4] = self.x[:, 2:4] + bias
-            self.initial_formation = "Grid"
         else:
             angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
             self.x[:, 2] = self.max_v * np.cos(angle)
