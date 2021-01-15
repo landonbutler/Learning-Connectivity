@@ -466,7 +466,14 @@ class MultiAgentEnv(gym.Env):
         return - np.mean(self.network_buffer[:, :, 0] - self.timestep)
 
     def instant_cost(self):  # average time_delay for a piece of information plus comm distance
-        if self.is_interference:
+        if self.flocking:
+            # Uses flocking reward as training
+            x_ave_vel = np.trace(self.network_buffer[:,:,4]) / self.n_agents
+            y_ave_vel = np.trace(self.network_buffer[:,:,5]) / self.n_agents
+            x_vel_var = np.square(self.network_buffer[:,:,4] - x_ave_vel)
+            y_vel_var = np.square(self.network_buffer[:,:,5] - y_ave_vel)
+            return np.sqrt(np.trace(x_vel_var) + np.trace(y_vel_var))
+        elif self.is_interference:
             return self.compute_current_aoi()
         else:
             return self.compute_current_aoi() + self.avg_transmit_distance * 0.05

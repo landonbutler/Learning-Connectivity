@@ -27,6 +27,7 @@ class MobileEnv(MultiAgentEnv):
             if self.biased_velocities:
                 bias = np.random.uniform(0.5 * -self.max_v, 0.5 * self.max_v, size=(1, 2))
                 self.x[:, 2:4] = self.x[:, 2:4] + bias
+            self.initial_formation = "Grid"
         else:
             angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
             self.x[:, 2] = self.max_v * np.cos(angle)
