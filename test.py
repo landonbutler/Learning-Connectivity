@@ -32,7 +32,7 @@ def make_env():
     if args.eavesdropping:
         env_name = "EavesdroppingEnv-v0"
     elif args.power_levels:
-        env_name = "PowerLevelsEnv-v0"
+        env_name = "PowerLevel025Env-v0"
     elif args.mobile_env:
         env_name = "MobileEnv10-v0"
     elif args.stationary_known_env:
@@ -134,6 +134,8 @@ if __name__ == '__main__':
         model_name = 'models/nl11_2/ckpt/ckpt_180.pkl'
         model_name = 'models/nl12_4/ckpt/ckpt_040.pkl'
 
+        model_name = 'models/mobile12_10_2/ckpt/ckpt_040.pkl'
+
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)
         policy_kwargs = model_params['policy_kwargs']
@@ -156,7 +158,7 @@ if __name__ == '__main__':
         print('\nTest over 10  episodes live visualization...')
         eval_model(env, model, 10, render=True)
 
-    n_episodes = 10
+    n_episodes = 100
     print('\nTest over ' + str(n_episodes) + ' episodes...')
     results = eval_model(env, model, n_episodes)
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(np.mean(results['reward']), np.std(results['reward'])))
