@@ -6,7 +6,7 @@ N_NODE_FEAT = 6
 
 class MobileEnv(MultiAgentEnv):
 
-    def __init__(self, agent_velocity=1.0, initialization='Random', biased_velocities=False, flocking=False):
+    def __init__(self, agent_velocity=1.0, initialization='Random', biased_velocities=False, flocking=False, random_acceleration=False):
         super().__init__(eavesdropping=True, fractional_power_levels=[0.25], initialization=initialization)
         self.max_v = agent_velocity * self.r_max  # for strictly mobile agents, this is the constant velocity
         self.ts_length = 0.01
@@ -17,6 +17,7 @@ class MobileEnv(MultiAgentEnv):
         self.x = np.zeros((self.n_agents, self.n_features))
 
         self.flocking = flocking
+        self.random_acceleration = random_acceleration
         self.biased_velocities = biased_velocities
         self.diag = np.eye(self.n_agents, dtype=np.bool).reshape(self.n_agents, self.n_agents, 1)
 
@@ -27,6 +28,8 @@ class MobileEnv(MultiAgentEnv):
             if self.biased_velocities:
                 bias = np.random.uniform(0.5 * -self.max_v, 0.5 * self.max_v, size=(1, 2))
                 self.x[:, 2:4] = self.x[:, 2:4] + bias
+        elif self.random_acceleration:
+            self.x[:, 2:4] = np.random.uniform(-self.max_v, self.max_v, size=(self.n_agents, 2))
         else:
             angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
             self.x[:, 2] = self.max_v * np.cos(angle)
@@ -48,8 +51,11 @@ class MobileEnv(MultiAgentEnv):
             known_velocities[known_velocities == 0] = np.nan
             self.x[:, 2:4] = np.nanmean(known_velocities, axis=1)
             self.x[:, 0:2] = self.x[:, 0:2] + self.x[:, 2:4] * self.ts_length
+        elif self.random_acceleration:
+            self.x[:, 2:4] += np.random.uniform(-self.max_v, self.max_v, size=(self.n_agents, 2)) * self.ts_length
+            self.x[:, 2:4] = np.clip(self.x[:, 2:4], -self.max_v, self.max_v)
 
-        else:
+        if not self.flocking:
             new_pos = self.x[:, 0:2] + self.x[:, 2:4] * self.ts_length
             self.x[:, 0:2] = np.clip(new_pos[:, 0:2], -self.r_max, self.r_max)
             self.x[:, 2:4] = np.where((self.x[:, 0:2] - new_pos[:, 0:2]) == 0, self.x[:, 2:4], -self.x[:, 2:4])

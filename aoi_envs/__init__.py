@@ -150,6 +150,15 @@ register(
 )
 
 register(
+    id='MobileRandomEnv-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.0, 'random_acceleration': True},
+)
+
+
+
+register(
     id='MobileEnv20-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
@@ -160,6 +169,6 @@ register(
     id='FlockingEnv-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 3.0, 'initialization': 'Grid', 'flocking': True, 'biased_velocities': False},
+    kwargs={'agent_velocity': 1.0, 'initialization': 'Grid', 'flocking': True, 'biased_velocities': False},
 )
 
