@@ -245,8 +245,9 @@ class MultiAgentEnv(gym.Env):
     def reset(self):
         if self.initial_formation is "Grid":
             x,y = self.compute_grid_with_bias(1,1, self.n_agents)
-            self.x[:,0] = x
-            self.x[:,1] = y
+            perm = np.random.permutation(self.n_agents)
+            self.x[:,0] = x[perm]
+            self.x[:,1] = y[perm]
         elif self.initial_formation is "Clusters":
             n_clusters = int(np.sqrt(self.n_agents))
             cluster_offset = self.r_max / (n_clusters * 1.5)
@@ -255,8 +256,9 @@ class MultiAgentEnv(gym.Env):
 
             agent_cluster_assignment_x = np.reshape(np.tile(cent_x, max_agents_per_cluster).T, (max_agents_per_cluster * n_clusters))[:self.n_agents]
             agent_cluster_assignment_y = np.reshape(np.tile(cent_y, max_agents_per_cluster).T, (max_agents_per_cluster * n_clusters))[:self.n_agents]
-            self.x[:,0] = agent_cluster_assignment_x + np.random.uniform(-cluster_offset, cluster_offset, size=(self.n_agents,))
-            self.x[:,1] = agent_cluster_assignment_y + np.random.uniform(-cluster_offset, cluster_offset, size=(self.n_agents,))
+            perm = np.random.permutation(self.n_agents)
+            self.x[:,0] = agent_cluster_assignment_x[perm] + np.random.uniform(-cluster_offset, cluster_offset, size=(self.n_agents,))
+            self.x[:,1] = agent_cluster_assignment_y[perm] + np.random.uniform(-cluster_offset, cluster_offset, size=(self.n_agents,))
         else:
             self.x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
         self.mst_action = None
