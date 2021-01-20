@@ -155,11 +155,19 @@ def main():
     config_file = path.join(path.dirname(__file__), fname)
     config = configparser.ConfigParser()
     config.read(config_file)
+    last_env_name = 'StationaryEnv-v0'
     if config.sections():
         env = None
         test_env = None
+
         for section_name in config.sections():
+            if last_env_name != config[section_name].get('env', 'StationaryEnv-v0'):
+                env = None
+                test_env = None
+
             env, test_env = run_experiment(config[section_name], section_name, env, test_env)
+            last_env_name = config[section_name].get('env', 'StationaryEnv-v0')
+
             directory = Path('models/' + config[section_name].get('name') + section_name)
             save_dir = Path(directory)
             ckpt_dir = save_dir / 'ckpt'

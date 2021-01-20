@@ -32,7 +32,7 @@ def make_env():
     if args.eavesdropping:
         env_name = "EavesdroppingEnv-v0"
     elif args.power_levels:
-        env_name = "PowerLevels1Env-v0"
+        env_name = "PowerLevel025Env-v0"
     elif args.mobile_env:
         env_name = "MobileEnv10-v0"
     elif args.stationary_known_env:
@@ -140,6 +140,8 @@ if __name__ == '__main__':
         model_name = 'models/nl13_1/ckpt/ckpt_030.pkl'
         # model_name = 'models/5_Flocking/content/models/nl12_/ckpt/ckpt_030.pkl'
         # model_name = 'models/mobile12_05_2/ckpt/ckpt_040.pkl'
+        model_name = 'models/flocking_ckpt_030.pkl'
+        model_name = 'models/power13_025/ckpt/ckpt_040.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)
