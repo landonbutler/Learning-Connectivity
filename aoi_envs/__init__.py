@@ -95,7 +95,7 @@ register(
 )
 
 register(
-    id='StationaryGrid80Env-v0',
+    id='Stationary80Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'num_agents': 80},
@@ -154,13 +154,6 @@ register(
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'agent_velocity': 1.0},
-)
-
-register(
-    id='MobileRandomEnv-v0',
-    entry_point='aoi_envs:MobileEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 1.0, 'random_acceleration': True},
 )
 
 register(

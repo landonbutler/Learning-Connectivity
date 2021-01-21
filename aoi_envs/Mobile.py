@@ -12,7 +12,7 @@ class MobileEnv(MultiAgentEnv):
                          aoi_reward=aoi_reward)
         self.max_v = agent_velocity * self.r_max  # for strictly mobile agents, this is the constant velocity
         self.ts_length = 0.01
-        self.flocking_gain = 10.0
+        self.gain = 50.0
 
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
         self.recompute_solution = True
@@ -51,21 +51,21 @@ class MobileEnv(MultiAgentEnv):
 
         new_pos = self.x[:, 0:2] + self.x[:, 2:4] * self.ts_length
 
-        if self.flocking:
-            known_velocities = np.copy(self.network_buffer[:, :, 4:6])
-            known_velocities[known_velocities == 0] = np.nan
-            delta_velocity = np.nanmean(known_velocities, axis=1) - self.x[:, 2:4]
-            self.x[:, 2:4] += self.flocking_gain * delta_velocity * self.ts_length
-            self.x[:, 2:4] = np.clip(self.x[:, 2:4], -self.max_v, self.max_v)
-        elif self.random_acceleration:
-            self.x[:, 2:4] += np.random.uniform(-self.max_v, self.max_v, size=(self.n_agents, 2)) * self.ts_length
+        if self.flocking or self.random_acceleration:
+            if self.flocking:
+                known_velocities = np.copy(self.network_buffer[:, :, 4:6])
+                known_velocities[known_velocities == 0] = np.nan
+                acceleration = np.nanmean(known_velocities, axis=1) - self.x[:, 2:4]
+            else:
+                acceleration = np.random.uniform(-self.max_v, self.max_v, size=(self.n_agents, 2))
+            self.x[:, 2:4] += self.gain * self.ts_length * acceleration
             self.x[:, 2:4] = np.clip(self.x[:, 2:4], -self.max_v, self.max_v)
 
-        if not self.flocking:
+        if self.flocking:
+            self.x[:, 0:2] = new_pos
+        else:
             self.x[:, 0:2] = np.clip(new_pos[:, 0:2], -self.r_max, self.r_max)
             self.x[:, 2:4] = np.where((self.x[:, 0:2] - new_pos[:, 0:2]) == 0, self.x[:, 2:4], -self.x[:, 2:4])
-        else:
-            self.x[:, 0:2] = new_pos
 
         self.network_buffer[:, :, 2:6] = np.where(self.diag,
                                                   self.x[:, 0:4].reshape(self.n_agents, 1, 4),
