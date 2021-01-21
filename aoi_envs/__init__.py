@@ -188,5 +188,5 @@ register(
     id='Flocking05Env-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 0.5, 'flocking': True},
+    kwargs={'agent_velocity': 0.5, 'flocking': True, 'aoi_reward': False},
 )

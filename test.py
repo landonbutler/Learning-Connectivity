@@ -38,8 +38,8 @@ def make_env():
     elif args.stationary_known_env:
         env_name = "StationaryKnownEnv-v0"
     elif args.flocking_env:
-        # env_name = "Flocking05Env-v0"
-        env_name = "FlockingAOIEnv-v0"
+        env_name = "Flocking05Env-v0"
+        # env_name = "FlockingAOIEnv-v0"
     else:
         env_name = "StationaryGridEnv-v0"
     print(env_name)
