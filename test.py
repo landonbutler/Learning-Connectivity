@@ -7,43 +7,30 @@ import imageio
 import argparse
 import os
 
-parser = argparse.ArgumentParser(description="My parser")
+# Example Usage:
+# python3 test.py -v -e FlockingAOIEnv-v0 -p models/mobile12_05_2/ckpt/ckpt_040.pkl
+
+parser = argparse.ArgumentParser(description="Testing AoI Environments and Models")
+parser.add_argument('-v', '--visualize', dest='visualize', action='store_true')
+
 parser.add_argument('-g', '--greedy', dest='greedy', action='store_true')
 parser.add_argument('-m', '--mst', dest='mst', action='store_true')
 parser.add_argument('-r', '--random', dest='random', action='store_true')
 parser.add_argument('-b', '--roundrobin', dest='roundrobin', action='store_true')
 parser.add_argument('-n', '--neopolitan', dest='neopolitan', action='store_true')
-parser.add_argument('-v', '--visualize', dest='visualize', action='store_true')
 parser.add_argument('-l', '--learner', dest='learner', action='store_true')
-parser.add_argument('-me', '--mobileenv', dest='mobile_env', action='store_true')
-parser.add_argument('-sk', '--stationaryknown', dest='stationary_known_env', action='store_true')
-parser.add_argument('-f', '--flocking', dest='flocking_env', action='store_true')
-parser.add_argument('-p', '--power_levels', dest='power_levels', action='store_true')
-parser.add_argument('-e', '--eavesdropping', dest='eavesdropping', action='store_true')
-parser.add_argument('-gif', '--gif', dest='gif', action='store_true')
 
-parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, 
-                    mobile_env=False, stationary_known_env=False, flocking_env=False, gif=False, roundrobin=False,
-                    power_levels=False, eavesdropping=False)
+parser.add_argument('-gif', '--gif', dest='gif', action='store_true')
+parser.add_argument('-e', '--env', type=str)
+parser.add_argument('-p', '--path', dest='path', type=str)
+
+parser.set_defaults(random=True, mst=False, greedy=False, visualize=False, learner=False, roundrobin=False,
+                    gif=False, path='', env='StationaryEnv-v0')
 args = parser.parse_args()
 
 
 def make_env():
-    if args.eavesdropping:
-        env_name = "EavesdroppingEnv-v0"
-    elif args.power_levels:
-        env_name = "PowerLevel025Env-v0"
-    elif args.mobile_env:
-        env_name = "MobileEnv05-v0"
-    elif args.stationary_known_env:
-        env_name = "StationaryKnownEnv-v0"
-    elif args.flocking_env:
-        env_name = "Flocking05Env-v0"
-        # env_name = "FlockingAOIEnv-v0"
-    else:
-        env_name = "StationaryGridEnv-v0"
-    print(env_name)
-    my_env = gym.make(env_name)
+    my_env = gym.make(args.env)
     my_env = gym.wrappers.FlattenDictWrapper(my_env, dict_keys=my_env.env.keys)
     return my_env
 
@@ -64,7 +51,7 @@ def eval_model(env, model, N, render=False):
             # gif_fp = "visuals/models/"
             gif_fp = 'visuals/bufferTrees/'
             while not done:
-                if args.learner and model:
+                if args.learner or model:
                     action, state = model.predict(obs, state=state, deterministic=False)
                     controller = "GNN"
                 elif args.mst:
@@ -112,7 +99,9 @@ def save_gif(model_number, timestep, fp, controller):
 
 if __name__ == '__main__':
 
-    if args.learner:
+    model_name = args.path
+
+    if args.learner or len(model_name) > 0:
         import aoi_learner
         from aoi_learner.ppo2 import PPO2
         from stable_baselines.common.vec_env import SubprocVecEnv
@@ -120,30 +109,30 @@ if __name__ == '__main__':
 
         vec_env = SubprocVecEnv([make_env])
 
-        # Specify pre-trained model checkpoint file.
-
-        # model_name = 'models/rl_Landon/RL_GNN_5_ENT5_1/RL_GNN_5_ENT5_1.pkl'
-        # model_name = 'models/rl_nonlinear_9_3/ckpt/ckpt_146.pkl'
-        # model_name = 'models/rl3_mobile_1000_1/ckpt/ckpt_120.pkl'
-        model_name = 'models/rl3_mobile_2000_1/ckpt/ckpt_290.pkl'
-        model_name = 'models/eaves6_1/ckpt/ckpt_200.pkl'
-        # model_name = 'models/rl_Landon/EVE_GNN_R500_4/EVE_GNN_R500_4.pkl'
-        model_name = 'models/power8_1/ckpt/ckpt_170.pkl'
-        model_name = 'models/power8_3/ckpt/ckpt_160.pkl'
-        model_name = 'models/nl10_025_1/ckpt/ckpt_200.pkl'
-        model_name = 'models/rl_Landon/EVE_GNN_5.pkl'
-        model_name = 'models/nl11_2/ckpt/ckpt_180.pkl'
-        model_name = 'models/nl12_4/ckpt/ckpt_040.pkl'
-
-        model_name = 'models/mobile12_10_2/ckpt/ckpt_040.pkl'
-
-        model_name = 'models/power12_1/ckpt/ckpt_040.pkl'
-        model_name = 'models/nl13_1/ckpt/ckpt_030.pkl'
-        # model_name = 'models/5_Flocking/content/models/nl12_/ckpt/ckpt_030.pkl'
+        # # Specify pre-trained model checkpoint file.
+        #
+        # # model_name = 'models/rl_Landon/RL_GNN_5_ENT5_1/RL_GNN_5_ENT5_1.pkl'
+        # # model_name = 'models/rl_nonlinear_9_3/ckpt/ckpt_146.pkl'
+        # # model_name = 'models/rl3_mobile_1000_1/ckpt/ckpt_120.pkl'
+        # model_name = 'models/rl3_mobile_2000_1/ckpt/ckpt_290.pkl'
+        # model_name = 'models/eaves6_1/ckpt/ckpt_200.pkl'
+        # # model_name = 'models/rl_Landon/EVE_GNN_R500_4/EVE_GNN_R500_4.pkl'
+        # model_name = 'models/power8_1/ckpt/ckpt_170.pkl'
+        # model_name = 'models/power8_3/ckpt/ckpt_160.pkl'
+        # model_name = 'models/nl10_025_1/ckpt/ckpt_200.pkl'
+        # model_name = 'models/rl_Landon/EVE_GNN_5.pkl'
+        # model_name = 'models/nl11_2/ckpt/ckpt_180.pkl'
+        # model_name = 'models/nl12_4/ckpt/ckpt_040.pkl'
+        #
+        # model_name = 'models/mobile12_10_2/ckpt/ckpt_040.pkl'
+        #
+        # model_name = 'models/power12_1/ckpt/ckpt_040.pkl'
+        # model_name = 'models/nl13_1/ckpt/ckpt_030.pkl'
+        # # model_name = 'models/5_Flocking/content/models/nl12_/ckpt/ckpt_030.pkl'
+        # # model_name = 'models/mobile12_05_2/ckpt/ckpt_040.pkl'
+        # model_name = 'models/flocking_ckpt_030.pkl'
+        # model_name = 'models/power13_025/ckpt/ckpt_040.pkl'
         # model_name = 'models/mobile12_05_2/ckpt/ckpt_040.pkl'
-        model_name = 'models/flocking_ckpt_030.pkl'
-        model_name = 'models/power13_025/ckpt/ckpt_040.pkl'
-        model_name = 'models/mobile12_05_2/ckpt/ckpt_040.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)

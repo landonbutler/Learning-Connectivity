@@ -12,6 +12,17 @@ from aoi_learner.gnn_policy import GNNPolicy
 from aoi_learner.ppo2 import PPO2
 from aoi_learner.utils import ckpt_file, callback
 from test_all import find_best_model
+import argparse
+
+
+# Example usage
+# python3 train.py -t -p cfg/rl_gnn_nonlinear.cfg
+
+parser = argparse.ArgumentParser(description="Training AoI Models")
+parser.add_argument('-t', '--test', dest='test', action='store_true')
+parser.add_argument('-p', '--path', dest='path', type=str)
+parser.set_defaults(test=False, path='cfg/rl_gnn_nonlinear.cfg')
+cmd_args = parser.parse_args()
 
 
 def train_helper(env_param, test_env_param, train_param, policy_fn, policy_param, directory, env=None, test_env=None):
@@ -151,7 +162,7 @@ def run_experiment(args, section_name='', env=None, test_env=None):
 
 
 def main():
-    fname = sys.argv[1]
+    fname = cmd_args.path
     config_file = path.join(path.dirname(__file__), fname)
     config = configparser.ConfigParser()
     config.read(config_file)
@@ -171,13 +182,15 @@ def main():
             directory = Path('models/' + config[section_name].get('name') + section_name)
             save_dir = Path(directory)
             ckpt_dir = save_dir / 'ckpt'
-            find_best_model(ckpt_dir, test_env)
+            if cmd_args.test:
+                find_best_model(ckpt_dir, test_env)
     else:
         env, test_env = run_experiment(config[config.default_section])
         directory = Path('models/' + config[config.default_section].get('name'))
         save_dir = Path(directory)
         ckpt_dir = save_dir / 'ckpt'
-        find_best_model(ckpt_dir, test_env)
+        if cmd_args.test:
+            find_best_model(ckpt_dir, test_env)
 
 if __name__ == '__main__':
     main()

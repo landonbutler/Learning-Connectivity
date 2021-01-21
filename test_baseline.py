@@ -62,5 +62,7 @@ def main():
         print(config[config.default_section].get('name'))
         for baseline in baselines:
             eval_baseline(env, baseline)
+
+
 if __name__ == '__main__':
     main()
