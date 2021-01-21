@@ -81,45 +81,38 @@ register(
 )
 
 register(
-    id='StationaryGridEnv-v0',
+    id='Stationary40Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'initialization': "Grid"},
+    kwargs={'num_agents': 40},
 )
 
 register(
-    id='StationaryGrid40Env-v0',
+    id='Stationary60Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'initialization': "Grid", 'num_agents': 40},
-)
-
-register(
-    id='StationaryGrid60Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'initialization': "Grid", 'num_agents': 60},
+    kwargs={'num_agents': 60},
 )
 
 register(
     id='StationaryGrid80Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'initialization': "Grid", 'num_agents': 80},
+    kwargs={'num_agents': 80},
 )
 
 register(
-    id='StationaryGrid100Env-v0',
+    id='Stationary100Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'initialization': "Grid", 'num_agents': 100},
+    kwargs={'num_agents': 100},
 )
 
 register(
-    id='StationaryGrid150Env-v0',
+    id='Stationary150Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'initialization': "Grid", 'num_agents': 150},
+    kwargs={'num_agents': 150},
 )
 
 register(
@@ -170,8 +163,6 @@ register(
     kwargs={'agent_velocity': 1.0, 'random_acceleration': True},
 )
 
-
-
 register(
     id='MobileEnv20-v0',
     entry_point='aoi_envs:MobileEnv',
@@ -183,6 +174,19 @@ register(
     id='FlockingEnv-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 1.0, 'initialization': 'Grid', 'flocking': True, 'biased_velocities': False},
+    kwargs={'agent_velocity': 1.0, 'flocking': True, 'aoi_reward': False},
 )
 
+register(
+    id='FlockingAOIEnv-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.0, 'flocking': True},
+)
+
+register(
+    id='Flocking05Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 0.5, 'flocking': True},
+)

@@ -34,11 +34,12 @@ def make_env():
     elif args.power_levels:
         env_name = "PowerLevel025Env-v0"
     elif args.mobile_env:
-        env_name = "MobileEnv10-v0"
+        env_name = "MobileEnv05-v0"
     elif args.stationary_known_env:
         env_name = "StationaryKnownEnv-v0"
     elif args.flocking_env:
-        env_name = "FlockingEnv-v0"
+        # env_name = "Flocking05Env-v0"
+        env_name = "FlockingAOIEnv-v0"
     else:
         env_name = "StationaryGridEnv-v0"
     print(env_name)
@@ -142,6 +143,7 @@ if __name__ == '__main__':
         # model_name = 'models/mobile12_05_2/ckpt/ckpt_040.pkl'
         model_name = 'models/flocking_ckpt_030.pkl'
         model_name = 'models/power13_025/ckpt/ckpt_040.pkl'
+        model_name = 'models/mobile12_05_2/ckpt/ckpt_040.pkl'
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)

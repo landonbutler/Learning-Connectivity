@@ -21,13 +21,14 @@ PENALTY = 0
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=20, initialization="Random"):
+    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=20, initialization="Grid",
+                 aoi_reward=True):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
         self.n_agents = num_agents  # int(config['network_size'])
         self.n_nodes = self.n_agents * self.n_agents
-        self.r_max = 5000.0   # 10.0  #  float(config['max_rad_init'])
+        self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
         self.n_edges = self.n_agents * self.n_agents
 
@@ -41,8 +42,9 @@ class MultiAgentEnv(gym.Env):
         self.gaussian_noise_dBm = -90
         self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
         self.path_loss_exponent = 2
+        self.aoi_reward = aoi_reward
 
-        self.fraction_of_rmax = fractional_power_levels  #  [0.25, 0.125]
+        self.fraction_of_rmax = fractional_power_levels  # [0.25, 0.125]
         self.power_levels = self.find_power_levels()  # method finding
 
         self.r_max *= np.sqrt(self.n_agents / 20)
@@ -128,8 +130,6 @@ class MultiAgentEnv(gym.Env):
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
         self.save_plots = False
         self.seed()
-
-
 
     # def params_from_cfg(self, args):
     #     self.action_space = spaces.Box(low=-self.max_accel, high=self.max_accel, shape=(2 * self.n_agents,),
@@ -222,7 +222,8 @@ class MultiAgentEnv(gym.Env):
         :return: A dict representing the current routing buffers.
         """
         no_edge = np.not_equal(network_buffer[:, :, 1], -1)
-        senders = np.where(no_edge, self.n_agents * np.arange(self.n_agents)[:, np.newaxis] + network_buffer[:, :, 1],-1)
+        senders = np.where(no_edge, self.n_agents * np.arange(self.n_agents)[:, np.newaxis] + network_buffer[:, :, 1],
+                           -1)
         receivers = np.where(no_edge, np.reshape(np.arange(self.n_nodes), (self.n_agents, self.n_agents)), -1)
 
         # TODO add distances between nodes as edge features
@@ -244,21 +245,25 @@ class MultiAgentEnv(gym.Env):
 
     def reset(self):
         if self.initial_formation is "Grid":
-            x,y = self.compute_grid_with_bias(1,1, self.n_agents)
+            x, y = self.compute_grid_with_bias(1, 1, self.n_agents)
             perm = np.random.permutation(self.n_agents)
-            self.x[:,0] = x[perm]
-            self.x[:,1] = y[perm]
+            self.x[:, 0] = x[perm]
+            self.x[:, 1] = y[perm]
         elif self.initial_formation is "Clusters":
             n_clusters = int(np.sqrt(self.n_agents))
             cluster_offset = self.r_max / (n_clusters * 1.5)
-            cent_x, cent_y = self.compute_grid_with_bias(1.5, 1.5, n_clusters, additional_offset = cluster_offset)
+            cent_x, cent_y = self.compute_grid_with_bias(1.5, 1.5, n_clusters, additional_offset=cluster_offset)
             max_agents_per_cluster = int(np.ceil(self.n_agents / n_clusters))
 
-            agent_cluster_assignment_x = np.reshape(np.tile(cent_x, max_agents_per_cluster).T, (max_agents_per_cluster * n_clusters))[:self.n_agents]
-            agent_cluster_assignment_y = np.reshape(np.tile(cent_y, max_agents_per_cluster).T, (max_agents_per_cluster * n_clusters))[:self.n_agents]
+            agent_cluster_assignment_x = np.reshape(np.tile(cent_x, max_agents_per_cluster).T,
+                                                    (max_agents_per_cluster * n_clusters))[:self.n_agents]
+            agent_cluster_assignment_y = np.reshape(np.tile(cent_y, max_agents_per_cluster).T,
+                                                    (max_agents_per_cluster * n_clusters))[:self.n_agents]
             perm = np.random.permutation(self.n_agents)
-            self.x[:,0] = agent_cluster_assignment_x[perm] + np.random.uniform(-cluster_offset, cluster_offset, size=(self.n_agents,))
-            self.x[:,1] = agent_cluster_assignment_y[perm] + np.random.uniform(-cluster_offset, cluster_offset, size=(self.n_agents,))
+            self.x[:, 0] = agent_cluster_assignment_x[perm] + np.random.uniform(-cluster_offset, cluster_offset,
+                                                                                size=(self.n_agents,))
+            self.x[:, 1] = agent_cluster_assignment_y[perm] + np.random.uniform(-cluster_offset, cluster_offset,
+                                                                                size=(self.n_agents,))
         else:
             self.x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
         self.mst_action = None
@@ -468,10 +473,9 @@ class MultiAgentEnv(gym.Env):
         return - np.mean(self.network_buffer[:, :, 0] - self.timestep)
 
     def instant_cost(self):  # average time_delay for a piece of information plus comm distance
-        if self.flocking:
-            # Uses flocking reward as training
+        if self.flocking and not self.aoi_reward:
             return np.sum(np.var(self.x[:, 2:4] / self.r_max, axis=0)) * 100
-        elif self.is_interference:
+        elif self.is_interference or self.aoi_reward:
             return self.compute_current_aoi()
         else:
             return self.compute_current_aoi() + self.avg_transmit_distance * 0.05
@@ -570,7 +574,7 @@ class MultiAgentEnv(gym.Env):
 
     # Chooses a random action from the action space
     def roundrobin_controller(self, transmission_probability=1.0):
-        center_agent = np.argmin(np.power(self.x[:,0], 2) +  np.power(self.x[:,1], 2))
+        center_agent = np.argmin(np.power(self.x[:, 0], 2) + np.power(self.x[:, 1], 2))
         tx_choice = np.arange(self.n_agents) * len(self.power_levels)
         tx_idx = self.timestep % (self.n_agents - 1)
         tx_idx = tx_idx if tx_idx < center_agent else tx_idx + 1
@@ -692,7 +696,7 @@ class MultiAgentEnv(gym.Env):
         c = colorsys.rgb_to_hls(*mc.to_rgb(c))
         return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
 
-    def compute_grid_with_bias(self, x_offset_coef, y_offset_coef, n_points, additional_offset = 0):
+    def compute_grid_with_bias(self, x_offset_coef, y_offset_coef, n_points, additional_offset=0):
         n_rows = 0
         n_cols = 0
         for i in range(int(np.sqrt(n_points)), 0, -1):
@@ -702,12 +706,14 @@ class MultiAgentEnv(gym.Env):
                 break
         x_offset = self.r_max / (n_rows * x_offset_coef)
         y_offset = self.r_max / (n_cols * y_offset_coef)
-        x = np.linspace(-self.r_max + x_offset + additional_offset, self.r_max - x_offset - additional_offset, num = n_rows)
-        y = np.linspace(-self.r_max + y_offset + additional_offset, self.r_max - y_offset - additional_offset, num = n_cols)
-        xx, yy = np.meshgrid(x,y)
+        x = np.linspace(-self.r_max + x_offset + additional_offset, self.r_max - x_offset - additional_offset,
+                        num=n_rows)
+        y = np.linspace(-self.r_max + y_offset + additional_offset, self.r_max - y_offset - additional_offset,
+                        num=n_cols)
+        xx, yy = np.meshgrid(x, y)
         coords = np.array((xx.ravel(), yy.ravel())).T
-        biased_x_pos = coords[:,0] + np.random.uniform(-x_offset, x_offset, size=(n_points,))
-        biased_y_pos = coords[:,1] + np.random.uniform(-y_offset, y_offset, size=(n_points,))
+        biased_x_pos = coords[:, 0] + np.random.uniform(-x_offset, x_offset, size=(n_points,))
+        biased_y_pos = coords[:, 1] + np.random.uniform(-y_offset, y_offset, size=(n_points,))
         return biased_x_pos, biased_y_pos
 
     @staticmethod
