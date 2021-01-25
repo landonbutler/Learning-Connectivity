@@ -1,7 +1,0 @@
-Hops	File name	Mean	Std
-0	models/nl14_0/ckpt/ckpt_025.pkl	-18.7	12.9
-1	models/nl14_1/ckpt/ckpt_015.pkl	-12.1	6
-2	models/nl14_2/ckpt/ckpt_020.pkl 	-13	10.9
-3	models/nl14_3/ckpt/ckpt_035.pkl 	-10.8	6.8
-4	models/nl14_4/ckpt/ckpt_025.pkl 	-10.9	6.2
-5	models/nl14_5/ckpt/ckpt_040.pkl	-13.1	9.7
