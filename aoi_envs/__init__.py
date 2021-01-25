@@ -157,6 +157,13 @@ register(
 )
 
 register(
+    id='MobileEnv075-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 0.75},
+)
+
+register(
     id='MobileEnv10-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
@@ -164,11 +171,19 @@ register(
 )
 
 register(
-    id='MobileEnv20-v0',
+    id='MobileEnv125-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 2.0},
+    kwargs={'agent_velocity': 1.25},
 )
+
+register(
+    id='MobileEnv15-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.5},
+)
+
 
 register(
     id='FlockingEnv-v0',
@@ -184,9 +199,88 @@ register(
     kwargs={'agent_velocity': 1.0, 'flocking': True},
 )
 
+
+
+register(
+    id='Flocking025Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 0.25, 'flocking': True, 'aoi_reward': False},
+)
+
 register(
     id='Flocking05Env-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'agent_velocity': 0.5, 'flocking': True, 'aoi_reward': False},
+)
+
+register(
+    id='Flocking075Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 0.75, 'flocking': True, 'aoi_reward': False},
+)
+
+register(
+    id='Flocking10Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.0, 'flocking': True, 'aoi_reward': False},
+)
+
+register(
+    id='Flocking125Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.25, 'flocking': True, 'aoi_reward': False},
+)
+
+register(
+    id='Flocking15Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.5, 'flocking': True, 'aoi_reward': False},
+)
+
+register(
+    id='FlockingAOI025Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 0.25, 'flocking': True},
+)
+
+register(
+    id='FlockingAOI05Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 0.5, 'flocking': True},
+)
+
+register(
+    id='FlockingAOI075Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 0.75, 'flocking': True},
+)
+
+register(
+    id='FlockingAOI10Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.0, 'flocking': True},
+)
+
+register(
+    id='FlockingAOI125Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.25, 'flocking': True},
+)
+
+register(
+    id='FlockingAOI15Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.5, 'flocking': True},
 )

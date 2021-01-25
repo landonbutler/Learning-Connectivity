@@ -16,12 +16,12 @@ import argparse
 
 
 # Example usage
-# python3 train.py -t -p cfg/rl_gnn_nonlinear.cfg
+# python3 train.py -t -p cfg/nl.cfg
 
 parser = argparse.ArgumentParser(description="Training AoI Models")
 parser.add_argument('-t', '--test', dest='test', action='store_true')
 parser.add_argument('-p', '--path', dest='path', type=str)
-parser.set_defaults(test=False, path='cfg/rl_gnn_nonlinear.cfg')
+parser.set_defaults(test=False, path='cfg/nl.cfg')
 cmd_args = parser.parse_args()
 
 

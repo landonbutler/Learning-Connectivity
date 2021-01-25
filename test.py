@@ -17,15 +17,15 @@ parser.add_argument('-g', '--greedy', dest='greedy', action='store_true')
 parser.add_argument('-m', '--mst', dest='mst', action='store_true')
 parser.add_argument('-r', '--random', dest='random', action='store_true')
 parser.add_argument('-b', '--roundrobin', dest='roundrobin', action='store_true')
-parser.add_argument('-n', '--neopolitan', dest='neopolitan', action='store_true')
 parser.add_argument('-l', '--learner', dest='learner', action='store_true')
 
 parser.add_argument('-gif', '--gif', dest='gif', action='store_true')
 parser.add_argument('-e', '--env', type=str)
 parser.add_argument('-p', '--path', dest='path', type=str)
+parser.add_argument('-n', '--n_episodes', dest='n_episodes', type=int)
 
 parser.set_defaults(random=True, mst=False, greedy=False, visualize=False, learner=False, roundrobin=False,
-                    gif=False, path='', env='StationaryEnv-v0')
+                    gif=False, path='', env='StationaryEnv-v0', n_episodes=10)
 args = parser.parse_args()
 
 
@@ -156,9 +156,8 @@ if __name__ == '__main__':
         print('\nTest over 10  episodes live visualization...')
         eval_model(env, model, 10, render=True)
 
-    n_episodes = 10
-    print('\nTest over ' + str(n_episodes) + ' episodes...')
-    results = eval_model(env, model, n_episodes)
+    print('\nTest over ' + str(args.n_episodes) + ' episodes...')
+    results = eval_model(env, model, args.n_episodes)
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(np.mean(results['reward']), np.std(results['reward'])))
     print('')
 
