@@ -15,6 +15,7 @@ def main():
     if config.sections():
         for section_name in config.sections():
             test_env = gym.make(config[section_name].get('env', 'StationaryEnv-v0'))
+            test_env = gym.wrappers.FlattenDictWrapper(test_env, dict_keys=test_env.env.keys)
             directory = Path('models/' + config[section_name].get('name') + section_name)
             save_dir = Path(directory)
             ckpt_dir = save_dir / 'ckpt'

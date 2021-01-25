@@ -81,6 +81,13 @@ register(
 )
 
 register(
+    id='Stationary30Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'num_agents': 30},
+)
+
+register(
     id='Stationary40Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,

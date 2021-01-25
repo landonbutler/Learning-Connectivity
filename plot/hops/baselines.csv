@@ -1,0 +1,5 @@
+Baseline	Mean	Std
+MST	-13.8	4.8
+Greedy	-25.6	7.6
+RoundRobin	-18.3	9
+Random	-22.1	8.4
