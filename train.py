@@ -33,6 +33,8 @@ def train_helper(env_param, test_env_param, train_param, policy_fn, policy_param
         d.mkdir(parents=True, exist_ok=True)
 
     if env is None:
+        # env = SubprocVecEnv([env_param['make_env']] * train_param['n_env'])
+        # env.close()
         env = SubprocVecEnv([env_param['make_env']] * train_param['n_env'])
         if 'normalize_reward' in train_param and train_param['normalize_reward']:
             print('Reward will be normalized during training')
