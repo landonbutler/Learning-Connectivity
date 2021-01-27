@@ -47,7 +47,8 @@ def main():
     config_file = path.join(path.dirname(__file__), fname)
     config = configparser.ConfigParser()
     config.read(config_file)
-    baselines = ['mst', 'greedy', 'roundrobin', 'random']
+    # baselines = ['mst', 'greedy', 'roundrobin', 'random']
+    baselines = ['mst', 'random']
 
     if config.sections():
         for section_name in config.sections():
