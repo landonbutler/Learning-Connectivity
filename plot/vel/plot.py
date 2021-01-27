@@ -5,28 +5,33 @@ plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 
 # Data files
 directory = ''
-fnames = ['id', 'nl', 'baseline_rr', 'baseline_mst']
+fnames = ['nl', 'random', 'mst']
 fnames = [directory + fname + '.csv' for fname in fnames]
 n_trials = 100
 
 # Curve appearance
-colors = ['tab:blue', 'tab:orange', 'tab:purple', 'tab:green']
-linestyles = ['-', '-', '-.', '--']
-labels = ['Agg. GNN', 'Non-Linear Agg. GNN', 'Round Robin', 'MST']
+colors = ['tab:orange', 'tab:red', 'tab:green']
+linestyles = ['-', '-.', '--']
+labels = ['Non-Linear Agg. GNN', 'Random', 'MST']
+
 
 # Generate plot
 fig = plt.figure(figsize=(6, 4))
+ax = fig.add_subplot(1, 1, 1)
+# plt.yscale('log')
 for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
     data = np.loadtxt(fname, skiprows=1)
     plt.errorbar(data[:, 0], data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
 
+# ax.set_yscale('log')
 plt.ylabel('Avg. Reward')
-plt.xlabel('GNN Receptive Field')
+plt.xlabel('Agent Velocity Ratio')
 plt.legend(loc='lower right')
-plt.ylim((-25, -9))
+
+# plt.ylim((-25, -9))
 
 # Save plot as .eps
-plt.savefig(directory + 'hops.eps', format='eps')
+plt.savefig(directory + 'vel.eps', format='eps')
 plt.show()
 
 

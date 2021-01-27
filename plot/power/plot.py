@@ -10,7 +10,7 @@ fnames = [directory + fname + '.csv' for fname in fnames]
 n_trials = 100
 
 # Curve appearance
-colors = ['tab:orange', 'tab:red', 'tab:green', 'tab:pink']
+colors = ['tab:orange', 'tab:purple', 'tab:green']
 linestyles = ['-', '-.', '--']
 labels = ['Non-Linear Agg. GNN', 'Round Robin', 'MST']
 
