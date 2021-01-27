@@ -10,6 +10,8 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
 )
 
+###################################################################
+
 register(
     id='PowerLevelsEnv-v0',
     entry_point='aoi_envs:MultiAgentEnv',
@@ -37,6 +39,8 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'fractional_power_levels': [0.5, 0.125]},
 )
+
+###################################################################
 
 register(
     id='PowerLevel10Env-v0',
@@ -80,6 +84,8 @@ register(
     kwargs={'fractional_power_levels': [0.15]},
 )
 
+###################################################################
+
 register(
     id='Stationary30Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
@@ -121,6 +127,8 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'num_agents': 150},
 )
+
+###################################################################
 
 register(
     id='MobileEnv-v0',
@@ -184,6 +192,8 @@ register(
     kwargs={'agent_velocity': 1.5},
 )
 
+###################################################################
+
 register(
     id='MobileEnv10N40-v0',
     entry_point='aoi_envs:MobileEnv',
@@ -191,6 +201,12 @@ register(
     kwargs={'agent_velocity': 1.0, 'num_agents': 40},
 )
 
+register(
+    id='MobileEnv10N60-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.0, 'num_agents': 80},
+)
 
 register(
     id='MobileEnv10N80-v0',
@@ -199,6 +215,14 @@ register(
     kwargs={'agent_velocity': 1.0, 'num_agents': 80},
 )
 
+register(
+    id='MobileEnv10N100-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.0, 'num_agents': 80},
+)
+
+###################################################################
 
 register(
     id='FlockingEnv-v0',
@@ -214,7 +238,7 @@ register(
     kwargs={'agent_velocity': 1.0, 'flocking': True},
 )
 
-
+###################################################################
 
 register(
     id='Flocking025Env-v0',
@@ -257,6 +281,8 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'agent_velocity': 1.5, 'flocking': True, 'aoi_reward': False},
 )
+
+###################################################################
 
 register(
     id='FlockingAOI025Env-v0',
