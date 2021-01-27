@@ -184,6 +184,21 @@ register(
     kwargs={'agent_velocity': 1.5},
 )
 
+register(
+    id='MobileEnv10N40-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.0, 'num_agents': 40},
+)
+
+
+register(
+    id='MobileEnv10N80-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.0, 'num_agents': 80},
+)
+
 
 register(
     id='FlockingEnv-v0',

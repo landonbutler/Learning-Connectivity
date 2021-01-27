@@ -43,6 +43,7 @@ class MultiAgentEnv(gym.Env):
         self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
         self.path_loss_exponent = 2
         self.aoi_reward = aoi_reward
+        self.distance_scale = self.r_max
 
         self.fraction_of_rmax = fractional_power_levels  # [0.25, 0.125]
         self.power_levels = self.find_power_levels()  # method finding
@@ -207,11 +208,11 @@ class MultiAgentEnv(gym.Env):
 
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
         self.relative_buffer[:, :, 2:4] -= self.x[:, 0:2].reshape(self.n_agents, 1, 2)
-        self.relative_buffer[:, :, 2:4] /= self.r_max
+        self.relative_buffer[:, :, 2:4] /= self.distance_scale
 
         if self.mobile_agents:
             self.relative_buffer[:, :, 4:6] -= self.x[:, 2:4].reshape(self.n_agents, 1, 2)
-            self.relative_buffer[:, :, 4:6] /= self.r_max
+            self.relative_buffer[:, :, 4:6] /= self.distance_scale
 
         # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
         return self.map_to_observation_space(self.relative_buffer)
@@ -474,7 +475,7 @@ class MultiAgentEnv(gym.Env):
 
     def instant_cost(self):  # average time_delay for a piece of information plus comm distance
         if self.flocking and not self.aoi_reward:
-            return np.sum(np.var(self.x[:, 2:4]/self.r_max, axis=0)) * 10000
+            return np.sum(np.var(self.x[:, 2:4]/self.distance_scale, axis=0)) * 10000
         elif self.is_interference or self.aoi_reward:
             return self.compute_current_aoi()
         else:
@@ -667,7 +668,7 @@ class MultiAgentEnv(gym.Env):
         power_levels = []
         for i in self.fraction_of_rmax:
             power_levels.append(self.find_power_level_by_dist(
-                i * self.r_max * 2 * np.sqrt(2)))  # Should this be r_max * 2 sqrt(2) to cover diagonal?
+                i * self.distance_scale * 2 * np.sqrt(2)))  # Should this be r_max * 2 sqrt(2) to cover diagonal?
         return np.array(power_levels)
 
     def find_power_level_by_dist(self, distance):
