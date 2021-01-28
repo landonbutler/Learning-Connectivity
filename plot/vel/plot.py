@@ -18,7 +18,7 @@ labels = ['Non-Linear Agg. GNN', 'Random', 'MST']
 # Generate plot
 fig = plt.figure(figsize=(6, 4))
 ax = fig.add_subplot(1, 1, 1)
-# plt.yscale('log')
+plt.tight_layout()
 for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
     data = np.loadtxt(fname, skiprows=1)
     plt.errorbar(data[:, 0], data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
@@ -31,7 +31,7 @@ plt.legend(loc='lower right')
 # plt.ylim((-25, -9))
 
 # Save plot as .eps
-plt.savefig(directory + 'vel.eps', format='eps')
+plt.savefig(directory + 'vel.eps', format='eps', bbox_inches='tight')
 plt.show()
 
 

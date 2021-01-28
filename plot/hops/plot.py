@@ -16,6 +16,7 @@ labels = ['Agg. GNN', 'Non-Linear Agg. GNN', 'Round Robin', 'MST']
 
 # Generate plot
 fig = plt.figure(figsize=(6, 4))
+plt.tight_layout()
 for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
     data = np.loadtxt(fname, skiprows=1)
     plt.errorbar(data[:, 0], data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
@@ -26,7 +27,7 @@ plt.legend(loc='lower right')
 plt.ylim((-25, -9))
 
 # Save plot as .eps
-plt.savefig(directory + 'hops.eps', format='eps')
+plt.savefig(directory + 'hops.eps', format='eps', bbox_inches='tight')
 plt.show()
 
 

@@ -16,6 +16,7 @@ labels = ['Non-Linear Agg. GNN', 'Random', 'MST']
 
 # Generate plot
 fig = plt.figure(figsize=(6, 4))
+
 for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
     import os 
     filename = os.path.join(R'C:\Users\Landon\Source\Repos\aoi_multi_agent_swarm\plot\flockingAOI', fname)
@@ -30,5 +31,5 @@ plt.ylim((-25, -9))
 # Save plot as .eps
 # filename = os.path.join(R'C:\Users\Landon\Source\Repos\aoi_multi_agent_swarm\plot\flockingAOI', 'flocking_aoi.eps')
 # filename = os.path.join(R'C:\Users\Landon\Source\Repos\aoi_multi_agent_swarm\plot\flockingAOI', 'flocking_aoi.eps')
-plt.savefig('flocking_aoi.eps', format='eps')
+plt.savefig('flocking_aoi.eps', format='eps', bbox_inches='tight')
 plt.show()
