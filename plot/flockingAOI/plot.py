@@ -21,12 +21,12 @@ for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
     import os 
     filename = os.path.join(R'C:\Users\Landon\Source\Repos\aoi_multi_agent_swarm\plot\flockingAOI', fname)
     data = np.loadtxt(fname, skiprows=1)
-    plt.errorbar(data[:, 0], data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
+    plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
 
-plt.ylabel('Avg. Reward')
+plt.ylabel('Avg. Cost')
 plt.xlabel('Agent Velocity Ratio')
-plt.legend(loc='lower left')
-plt.ylim((-25, -9))
+plt.legend(loc='lower right')
+plt.ylim((9, 25))
 
 # Save plot as .eps
 # filename = os.path.join(R'C:\Users\Landon\Source\Repos\aoi_multi_agent_swarm\plot\flockingAOI', 'flocking_aoi.eps')

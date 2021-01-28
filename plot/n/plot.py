@@ -19,11 +19,11 @@ fig = plt.figure(figsize=(6, 4))
 # plt.tight_layout()
 for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
     data = np.loadtxt(fname, skiprows=1)
-    plt.errorbar(data[:, 0], data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
+    plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
 
-plt.ylabel('Avg. Reward')
+plt.ylabel('Avg. Cost')
 plt.xlabel('Number of Agents')
-plt.legend(loc='upper right')
+plt.legend(loc='lower right')
 # plt.ylim((-25, -9))
 
 # Save plot as .eps

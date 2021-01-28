@@ -21,12 +21,12 @@ ax = fig.add_subplot(1, 1, 1)
 # plt.yscale('log')
 for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
     data = np.loadtxt(fname, skiprows=1)
-    plt.errorbar(data[:, 0], data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
+    plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
 
 # ax.set_yscale('log')
-plt.ylabel('Avg. Reward')
+plt.ylabel('Avg. Cost')
 plt.xlabel('Transmission Power Ratio')
-plt.legend(loc='lower right')
+plt.legend(loc='upper right')
 
 # plt.ylim((-25, -9))
 
