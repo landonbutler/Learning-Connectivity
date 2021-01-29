@@ -7,11 +7,9 @@ N_NODE_FEAT = 6
 class MobileEnv(MultiAgentEnv):
 
     def __init__(self, agent_velocity=1.0, initialization='Grid', biased_velocities=False, flocking=False,
-                 random_acceleration=True, aoi_reward=True, flocking_position_control=False, num_agents=20,
-                 random_p=0.1, mst_p=0.1):
+                 random_acceleration=True, aoi_reward=True, flocking_position_control=False, num_agents=20):
         super().__init__(eavesdropping=True, fractional_power_levels=[0.25], initialization=initialization,
-                         aoi_reward=aoi_reward, num_agents=num_agents, random_p=random_p,
-                         mst_p=mst_p)
+                         aoi_reward=aoi_reward, num_agents=num_agents)
         self.max_v = agent_velocity * self.distance_scale  # for strictly mobile agents, this is the constant velocity
         self.ts_length = 0.01
         self.gain = 50.0

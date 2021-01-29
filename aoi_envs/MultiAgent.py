@@ -22,7 +22,7 @@ PENALTY = 0
 class MultiAgentEnv(gym.Env):
 
     def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=20, initialization="Grid",
-                 aoi_reward=True, random_p=0.1, mst_p=0.1):
+                 aoi_reward=True):
         super(MultiAgentEnv, self).__init__()
 
         # default problem parameters
@@ -44,9 +44,6 @@ class MultiAgentEnv(gym.Env):
         self.path_loss_exponent = 2
         self.aoi_reward = aoi_reward
         self.distance_scale = self.r_max
-
-        self.random_p = random_p
-        self.mst_p = mst_p
 
         self.fraction_of_rmax = fractional_power_levels  # [0.25, 0.125]
         self.power_levels = self.find_power_levels()  # method finding
@@ -552,7 +549,7 @@ class MultiAgentEnv(gym.Env):
     #                         np.arange(self.n_agents) * len(self.power_levels))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self, selective_comms=True):
+    def mst_controller(self, mst_p, selective_comms=True):
 
         if self.recompute_solution or self.mst_action is None:
             distances = self.compute_distances()
@@ -567,14 +564,14 @@ class MultiAgentEnv(gym.Env):
             return self.mst_action
         else:
             tx_prob = np.random.uniform(size=(self.n_agents,))
-            return np.where(tx_prob < self.mst_p, self.mst_action,
+            return np.where(tx_prob < mst_p, self.mst_action,
                             np.arange(self.n_agents) * len(self.power_levels))
 
     # Chooses a random action from the action space
-    def random_controller(self):
+    def random_controller(self, random_p):
         attempted_trans = self.action_space.sample()
         tx_prob = np.random.uniform(size=(self.n_agents,))
-        return np.where(tx_prob < self.random_p, attempted_trans,
+        return np.where(tx_prob < random_p, attempted_trans,
                         np.arange(self.n_agents) * len(self.power_levels))
 
     # Chooses a random action from the action space
