@@ -68,6 +68,7 @@ def train_helper(env_param, test_env_param, train_param, policy_fn, policy_param
             cliprange=train_param['cliprange'],
             adam_epsilon=train_param['adam_epsilon'],
             n_steps=train_param['n_steps'],
+            nminibatches=train_param['nminibatches'],
             ent_coef=train_param['ent_coef'],
             vf_coef=train_param['vf_coef'],
             verbose=1,
@@ -96,7 +97,7 @@ def train_helper(env_param, test_env_param, train_param, policy_fn, policy_param
             total_timesteps=train_param['checkpoint_timesteps'],
             log_interval=500,
             reset_num_timesteps=False,
-            callback=functools.partial(callback, test_env=test_env, interval=train_param['checkpoint_timesteps'], n_episodes=10))
+            callback=functools.partial(callback, test_env=test_env, interval=train_param['checkpoint_timesteps'], n_episodes=1))
 
         print('\nSaving model {}.\n'.format(ckpt_file(ckpt_dir, ckpt_idx).name))
         model.save(str(ckpt_file(ckpt_dir, ckpt_idx)))
@@ -138,6 +139,7 @@ def run_experiment(args, section_name='', env=None, test_env=None):
         'load_trained_policy': args.get('load_trained_policy', ''),
         'normalize_reward': args.get('normalize_reward', False),
         'n_env': args.getint('n_env', 4),
+        'nminibatches': args.getint('n_env', 4),
         'n_steps': args.getint('n_steps', 10),
         'checkpoint_timesteps': args.getint('checkpoint_timesteps', 10000),
         'total_timesteps': args.getint('total_timesteps', 50000000),

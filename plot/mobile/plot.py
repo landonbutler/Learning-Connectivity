@@ -31,7 +31,7 @@ plt.legend(loc='upper right')
 # plt.ylim((-25, -9))
 
 # Save plot as .eps
-plt.savefig(directory + 'vel.eps', format='eps', bbox_inches='tight')
+plt.savefig(directory + 'mobile.eps', format='eps', bbox_inches='tight')
 plt.show()
 
 
