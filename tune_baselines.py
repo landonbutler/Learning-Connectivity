@@ -38,16 +38,18 @@ def eval_baseline(env, baseline, probability, n_episodes=20):
 
 
 def main():
-    params = ['N10', '', 'N40', 'N60', 'N80', 'N100']
-    env_names = ['MobileEnv10']
-    postfix = '-v0'
+    # params = ['N10', '', 'N40', 'N60', 'N80', 'N100']
+    # env_names = ['MobileEnv10']
+    # postfix = '-v0'
+    #
+    # environments = []
+    # for env_name in env_names:
+    #     for param in params:
+    #         environments.append(env_name + param + postfix)
 
-    environments = []
-    for env_name in env_names:
-        for param in params:
-            environments.append(env_name + param + postfix)
+    environments = ['StationaryPushEnv-v0']
 
-    baselines = ['MST', 'Random']
+    baselines = ['Random']
 
     probabilities = [0.08, 0.1, 0.12, 0.15, 0.18, 0.2, 0.22, 0.25]
     fields = ['EnvName']
@@ -78,7 +80,7 @@ def main():
             best_results.append(best_prob)
         data_to_csv.append(best_results)
 
-    filename = "tuned_n.csv"
+    filename = "tuned_push.csv"
     
     # writing to csv file  
     with open(filename, 'w') as csvfile:  

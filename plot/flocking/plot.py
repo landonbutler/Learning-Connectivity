@@ -13,7 +13,7 @@ for reward in ['aoi', 'var']:
     # Curve appearance
     colors = ['tab:orange', 'tab:pink', 'tab:red', 'tab:green']
     linestyles = ['-', '-', '-.', '--']
-    labels = ['Agg. GNN Trained using AoI', 'Agg. GNN Trained using Variance', 'Random', 'MST']
+    labels = ['GNN Trained via AoI', 'GNN Trained via Var', 'Random', 'MST']
 
     # Generate plot
     fig = plt.figure(figsize=(6, 4))
@@ -24,14 +24,19 @@ for reward in ['aoi', 'var']:
         data = np.loadtxt(fname, skiprows=1)
         plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
 
-    plt.ylabel('Avg. Cost')
+    if reward == 'aoi':
+        plt.ylabel('Avg. Age of Info. Cost')
+    else:
+        plt.ylabel('Avg. Velocity Variance Cost')
+
     plt.xlabel('Agent Velocity Ratio')
-    plt.legend(loc='lower right')
 
     if reward == 'aoi':
-        plt.ylim((9, 25))
+        plt.ylim((0, 27))
     else:
         plt.ylim((0, 50))
+
+    plt.legend()
 
     # Save plot as .eps
     # filename = os.path.join(R'C:\Users\Landon\Source\Repos\aoi_multi_agent_swarm\plot\flocking', 'flocking_aoi.eps')

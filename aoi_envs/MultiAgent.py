@@ -13,7 +13,6 @@ font = {'family': 'sans-serif',
         'weight': 'bold',
         'size': 11}
 
-EPISODE_LENGTH = 500
 N_NODE_FEAT = 6
 N_EDGE_FEAT = 1
 PENALTY = 0
@@ -22,20 +21,15 @@ PENALTY = 0
 class MultiAgentEnv(gym.Env):
 
     def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=20, initialization="Grid",
-                 aoi_reward=True):
+                 aoi_reward=True, episode_length=500, comm_model="tw"):
         super(MultiAgentEnv, self).__init__()
 
-        # default problem parameters
-        self.n_agents = num_agents  # int(config['network_size'])
+        # Problem parameters
+        self.n_agents = num_agents
         self.n_nodes = self.n_agents * self.n_agents
-        self.r_max = 5000.0  # 10.0  #  float(config['max_rad_init'])
+        self.r_max = 5000.0
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
         self.n_edges = self.n_agents * self.n_agents
-
-        self.edge_features = np.zeros((self.n_nodes, 1))
-
-        # initialize state matrices
-        self.x = np.zeros((self.n_agents, self.n_features))
 
         self.carrier_frequency_ghz = 2.4
         self.min_SINR = -4  # 10-15 is consider unreliable, cited paper uses -4
@@ -50,8 +44,16 @@ class MultiAgentEnv(gym.Env):
 
         self.r_max *= np.sqrt(self.n_agents / 20)
 
-        self.action_space = spaces.MultiDiscrete([self.n_agents * len(self.power_levels)] * self.n_agents)
+        # initialize state matrices
+        self.edge_features = np.zeros((self.n_nodes, 1))
+        self.episode_length = episode_length
+        self.x = np.zeros((self.n_agents, self.n_features))
+        self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
+        self.old_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
+        self.relative_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
+
         # each agent has their own action space of a n_agent vector of weights
+        self.action_space = spaces.MultiDiscrete([self.n_agents * len(self.power_levels)] * self.n_agents)
 
         self.observation_space = spaces.Dict(
             [
@@ -67,10 +69,11 @@ class MultiAgentEnv(gym.Env):
                                        dtype=np.float32)),
                 ("receivers", spaces.Box(shape=(self.n_edges, 1), low=0, high=self.n_agents,
                                          dtype=np.float32)),
-                ("globals", spaces.Box(shape=(1, 1), low=0, high=EPISODE_LENGTH, dtype=np.float32)),
+                ("globals", spaces.Box(shape=(1, 1), low=0, high=self.episode_length, dtype=np.float32)),
             ]
         )
 
+        # Plotting placeholders
         self.fig = None
         self.agent_markers = None
         self.np_random = None
@@ -82,10 +85,6 @@ class MultiAgentEnv(gym.Env):
 
         self.diff = None
         self.r2 = None
-
-        self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
-        self.old_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
-        self.relative_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
 
         self.timestep = 0
         self.avg_transmit_distance = 0
@@ -113,39 +112,20 @@ class MultiAgentEnv(gym.Env):
         else:
             self.render_radius = self.r_max
 
-        # self.transmission_probability = .33  # Probability an agent will transmit at a given time step [0,1]
-
         # Push Model: At each time step, agent selects which agent they want to 'push' their buffer to
         # Two-Way Model: An agent requests/pushes their buffer to an agent, with hopes of getting their information back
         # self.comm_model = "push"  # push or tw
-        self.comm_model = "tw"  # push or tw
+        self.comm_model = comm_model  #"tw"  # push or tw
 
         self.attempted_transmissions = None
         self.successful_transmissions = None
 
         self.initial_formation = initialization
-        # self.initial_formation = "Grid"  # Random, Grid, or Clusters
-        # self.initial_formation = "Clusters"
 
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
         self.save_plots = False
         self.seed()
-
-    # def params_from_cfg(self, args):
-    #     self.action_space = spaces.Box(low=-self.max_accel, high=self.max_accel, shape=(2 * self.n_agents,),
-    #                                    dtype=np.float32)
-    #
-    #     self.observation_space = spaces.Box(low=-np.Inf, high=np.Inf, shape=(self.n_agents, self.n_features),
-    #                                         dtype=np.float32)
-    #
-    #     self.carrier_frequency_ghz = args.getfloat('carrier_frequency_ghz')
-    #     self.min_SINR = args.getfloat('min_SINR')
-    #     self.gaussian_noise_dBm = args.getfloat('gaussian_noise_dBm')
-    #     self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
-    #     self.path_loss_exponent = args.getfloat('path_loss_exponent')
-    #
-    #     self.is_interference = args.getbool('is_interference')
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -194,7 +174,7 @@ class MultiAgentEnv(gym.Env):
         if not self.network_connected:
             self.is_network_connected()
 
-        return self.get_relative_network_buffer_as_dict(), - self.instant_cost() / EPISODE_LENGTH, False, {}
+        return self.get_relative_network_buffer_as_dict(), - self.instant_cost() / self.episode_length, False, {}
 
     def get_relative_network_buffer_as_dict(self):
         """
@@ -204,7 +184,7 @@ class MultiAgentEnv(gym.Env):
         # timesteps and positions won't be relative within env, but need to be when passed out
         self.relative_buffer[:] = self.network_buffer
         self.relative_buffer[:, :, 0] -= self.timestep
-        self.relative_buffer[:, :, 0] /= EPISODE_LENGTH
+        self.relative_buffer[:, :, 0] /= self.episode_length
 
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
         self.relative_buffer[:, :, 2:4] -= self.x[:, 0:2].reshape(self.n_agents, 1, 2)
@@ -549,7 +529,7 @@ class MultiAgentEnv(gym.Env):
     #                         np.arange(self.n_agents) * len(self.power_levels))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
-    def mst_controller(self, mst_p, selective_comms=True):
+    def mst_controller(self, mst_p=0.1, selective_comms=True):
 
         if self.recompute_solution or self.mst_action is None:
             distances = self.compute_distances()
@@ -568,7 +548,7 @@ class MultiAgentEnv(gym.Env):
                             np.arange(self.n_agents) * len(self.power_levels))
 
     # Chooses a random action from the action space
-    def random_controller(self, random_p):
+    def random_controller(self, random_p=0.1):
         attempted_trans = self.action_space.sample()
         tx_prob = np.random.uniform(size=(self.n_agents,))
         return np.where(tx_prob < random_p, attempted_trans,
@@ -583,21 +563,6 @@ class MultiAgentEnv(gym.Env):
 
         tx_choice[int(tx_idx)] = center_agent * len(self.power_levels)
         return tx_choice
-
-    # # 33% MST, 33% Greedy, 33% Random
-    # def neopolitan_controller(self, selective_comms=True, transmission_probability=0.33):
-    #     random_action = self.action_space.sample()
-    #     mst_action = self.mst_controller(False)
-    #     greedy_action = self.greedy_controller(False)
-    #
-    #     rand_3 = np.random.randint(0, 3, size=(self.n_agents,))
-    #     neopolitan_action = np.where(rand_3 == 0, random_action, (np.where(rand_3 == 1, mst_action, greedy_action)))
-    #     if not selective_comms:
-    #         return neopolitan_action
-    #     else:
-    #         tx_prob = np.random.uniform(size=(self.n_agents,))
-    #         return np.where(tx_prob < transmission_probability, neopolitan_action,
-    #                         np.arange(self.n_agents) * len(self.power_levels))
 
     def find_parents(self, T, parent_ref, degrees):
         leaves = [i for i in range(self.n_agents) if degrees[i] == 1]
