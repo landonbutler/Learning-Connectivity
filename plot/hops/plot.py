@@ -5,14 +5,14 @@ plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 
 # Data files
 directory = ''
-fnames = ['id', 'nl', 'baseline_rr', 'baseline_mst']
+fnames = ['id', 'nl', 'baseline_rr', 'baseline_mst', 'baseline_random', 'baseline_random_flooding']
 fnames = [directory + fname + '.csv' for fname in fnames]
 n_trials = 100
 
 # Curve appearance
-colors = ['tab:blue', 'tab:orange', 'tab:purple', 'tab:green']
-linestyles = [':', '-', '-.', '--']
-labels = ['Agg. GNN', 'Non-Linear Agg. GNN', 'Round Robin', 'MST']
+colors = ['tab:blue', 'tab:orange', 'tab:purple', 'tab:green', 'tab:red', 'tab:pink']
+linestyles = [':', '-', '-.', '--', ':', ':']
+labels = ['Agg. GNN', 'Non-Linear Agg. GNN', 'Round Robin', 'MST', 'Random', 'Random Flooding']
 
 # Generate plot
 fig = plt.figure(figsize=(6, 4))

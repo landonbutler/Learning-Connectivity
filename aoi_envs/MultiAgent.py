@@ -51,6 +51,7 @@ class MultiAgentEnv(gym.Env):
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         self.old_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         self.relative_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
+        self.diag = np.eye(self.n_agents, dtype=np.bool).reshape(self.n_agents, self.n_agents, 1)
 
         # each agent has their own action space of a n_agent vector of weights
         self.action_space = spaces.MultiDiscrete([self.n_agents * len(self.power_levels)] * self.n_agents)
@@ -140,15 +141,9 @@ class MultiAgentEnv(gym.Env):
         """
         assert (self.comm_model is "push" or self.comm_model is "tw")
 
-        if self.comm_model is "tw":
-            self.timestep = self.timestep + 0.5
-            # my information is updated
-            self.network_buffer[:, :, 0] += np.eye(self.n_agents) * 0.5
-
-        if self.comm_model is "push":
-            self.timestep = self.timestep + 1.0
-            # my information is updated
-            self.network_buffer[:, :, 0] += np.eye(self.n_agents) * 1.0
+        self.timestep = self.timestep + 0.5
+        # my information is updated
+        self.network_buffer[:, :, 0] += np.eye(self.n_agents) * 0.5
 
         self.attempted_transmissions = attempted_transmissions // len(self.power_levels)
         transmission_indexes = attempted_transmissions // len(self.power_levels)
@@ -512,21 +507,6 @@ class MultiAgentEnv(gym.Env):
                                               np.where(tx_adj_mat_power_db == np.NINF, 1, 0), 0), 0)
 
         return successful_tx_power, eavesdroppers
-
-    # # Given current buffer states, will pick agent with oldest AoI to communicate with
-    # def greedy_controller(self, selective_comms=True, transmission_probability=0.1):
-    #     comm_choice = np.zeros((self.n_agents))
-    #     for i in range(self.n_agents):
-    #         my_buffer_ts = self.network_buffer[i, :, 0]
-    #         comm_choice[i] = np.random.choice(np.flatnonzero(my_buffer_ts == my_buffer_ts.min())) * len(
-    #             self.power_levels)
-    #
-    #     if not selective_comms:
-    #         return comm_choice.astype(int)
-    #     else:
-    #         tx_prob = np.random.uniform(size=(self.n_agents,))
-    #         return np.where(tx_prob < transmission_probability, comm_choice.astype(int),
-    #                         np.arange(self.n_agents) * len(self.power_levels))
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
     def mst_controller(self, mst_p=0.1, selective_comms=True):

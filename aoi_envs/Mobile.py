@@ -14,16 +14,13 @@ class MobileEnv(MultiAgentEnv):
         self.ts_length = 0.01
         self.gain = 50.0
 
-        self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
         self.recompute_solution = True
         self.mobile_agents = True
-        self.x = np.zeros((self.n_agents, self.n_features))
 
         self.flocking = flocking
         self.flocking_position_control = flocking_position_control
         self.random_acceleration = random_acceleration
         self.biased_velocities = biased_velocities
-        self.diag = np.eye(self.n_agents, dtype=np.bool).reshape(self.n_agents, self.n_agents, 1)
 
     def reset(self):
         super().reset()
@@ -50,7 +47,6 @@ class MobileEnv(MultiAgentEnv):
 
     def potential_grad(self, pos_diff, r2):
         grad = -2.0 * np.divide(pos_diff, np.multiply(r2, r2)) + 2 * np.divide(pos_diff, r2)
-        # grad[r2 > self.comm_radius] = 0
         return grad
 
     def move_agents(self):
