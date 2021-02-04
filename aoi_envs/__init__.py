@@ -2,7 +2,7 @@ from aoi_envs.MultiAgent import MultiAgentEnv
 from aoi_envs.Mobile import MobileEnv
 from gym.envs.registration import register
 
-MAX_EPISODE_STEPS = 500
+MAX_EPISODE_STEPS = 10000
 
 register(
     id='StationaryEnv-v0',
@@ -15,7 +15,7 @@ register(
 register(
     id='StationaryPushEnv-v0',
     entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
+    max_episode_steps=1000,
     kwargs={'comm_model': 'push'},
 )
 

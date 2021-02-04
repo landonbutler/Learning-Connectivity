@@ -47,16 +47,18 @@ def main():
     #     for param in params:
     #         environments.append(env_name + param + postfix)
 
-    environments = ['StationaryPushEnv-v0']
+    environments = ['StationaryEnv-v0']
 
-    baselines = ['Random']
+    baselines = ['Random', 'MST']
 
-    probabilities = [0.08, 0.1, 0.12, 0.15, 0.18, 0.2, 0.22, 0.25]
+    # probabilities = [0.08, 0.1, 0.12, 0.15, 0.18, 0.2, 0.22, 0.25]
+    probabilities = [0.04, 0.06, 0.08, 0.1, 0.12, 0.15]
     fields = ['EnvName']
     for i in baselines:
         fields.append(i + " Mean")
         fields.append(i + " Std")
         fields.append(i + " Prob")
+    print(fields)
 
     data_to_csv = []
     for env_name in environments:
@@ -65,19 +67,19 @@ def main():
         print(env_name)
         for baseline in baselines:
             means = []
-            std = []
-            # print(env_name)
             for p in probabilities:
                 m, _ = eval_baseline(env, baseline, p, n_episodes=20)
                 means.append(m)
-            max_ind = means.index(max(means))
+                print(env.env.comm_model)
+                print(m)
+            max_ind = np.argmax(means)
             best_prob = probabilities[max_ind]
-            # print()
-            # print("Best Result is:")
             final_mean, final_std = eval_baseline(env, baseline, best_prob, n_episodes=100)
+
             best_results.append(final_mean)
             best_results.append(final_std)
             best_results.append(best_prob)
+        print(best_results)
         data_to_csv.append(best_results)
 
     filename = "tuned_push.csv"

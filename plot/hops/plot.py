@@ -12,7 +12,7 @@ n_trials = 100
 # Curve appearance
 colors = ['tab:blue', 'tab:orange', 'tab:purple', 'tab:green', 'tab:red', 'tab:pink']
 linestyles = [':', '-', '-.', '--', ':', ':']
-labels = ['Agg. GNN', 'Non-Linear Agg. GNN', 'Round Robin', 'MST', 'Random', 'Random Flooding']
+labels = ['Agg. GNN', 'Non-Linear Agg. GNN', 'Round Robin', 'MST', 'Random, 2 Way', 'Random, Push']
 
 # Generate plot
 fig = plt.figure(figsize=(6, 4))

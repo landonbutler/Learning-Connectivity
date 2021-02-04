@@ -15,13 +15,13 @@ font = {'family': 'sans-serif',
 
 N_NODE_FEAT = 6
 N_EDGE_FEAT = 1
-PENALTY = 0
+TIMESTEP = 0.5
 
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=20, initialization="Grid",
-                 aoi_reward=True, episode_length=500, comm_model="tw"):
+    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=50, initialization="Grid",
+                 aoi_reward=True, episode_length=500.0, comm_model="tw"):
         super(MultiAgentEnv, self).__init__()
 
         # Problem parameters
@@ -31,8 +31,9 @@ class MultiAgentEnv(gym.Env):
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
         self.n_edges = self.n_agents * self.n_agents
 
+
         self.carrier_frequency_ghz = 2.4
-        self.min_SINR = -4  # 10-15 is consider unreliable, cited paper uses -4
+        self.min_SINR_dbm = 1.0  # 10-15 is consider unreliable, cited paper uses -4
         self.gaussian_noise_dBm = -90
         self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
         self.path_loss_exponent = 2
@@ -47,6 +48,7 @@ class MultiAgentEnv(gym.Env):
         # initialize state matrices
         self.edge_features = np.zeros((self.n_nodes, 1))
         self.episode_length = episode_length
+        self.penalty = 0.0
         self.x = np.zeros((self.n_agents, self.n_features))
         self.network_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
         self.old_buffer = np.zeros((self.n_agents, self.n_agents, self.n_features))
@@ -141,9 +143,9 @@ class MultiAgentEnv(gym.Env):
         """
         assert (self.comm_model is "push" or self.comm_model is "tw")
 
-        self.timestep = self.timestep + 0.5
+        self.timestep = self.timestep + TIMESTEP
         # my information is updated
-        self.network_buffer[:, :, 0] += np.eye(self.n_agents) * 0.5
+        self.network_buffer[:, :, 0] += np.eye(self.n_agents) * TIMESTEP
 
         self.attempted_transmissions = attempted_transmissions // len(self.power_levels)
         transmission_indexes = attempted_transmissions // len(self.power_levels)
@@ -160,16 +162,21 @@ class MultiAgentEnv(gym.Env):
 
         if self.comm_model is "tw":
             # Two-Way Communications can be modeled as a sequence of a push and a response
-            self.timestep = self.timestep + 0.5
+            self.timestep = self.timestep + TIMESTEP
             # my information is updated
-            self.network_buffer[:, :, 0] += np.eye(self.n_agents) * 0.5
+            self.network_buffer[:, :, 0] += np.eye(self.n_agents) * TIMESTEP
 
             self.update_buffers(response_indexes, push=False)
 
         if not self.network_connected:
             self.is_network_connected()
 
-        return self.get_relative_network_buffer_as_dict(), - self.instant_cost() / self.episode_length, False, {}
+        if self.timestep / TIMESTEP % 2 == 1:
+            reward = 0
+        else:
+            reward = - self.instant_cost() / self.episode_length
+
+        return self.get_relative_network_buffer_as_dict(), reward, self.timestep >= self.episode_length, {}
 
     def get_relative_network_buffer_as_dict(self):
         """
@@ -259,7 +266,7 @@ class MultiAgentEnv(gym.Env):
                                                     self.network_buffer[:, :, 3])
 
         # motivates agents to get information in the first time step
-        self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0, PENALTY)
+        self.network_buffer[:, :, 0] = np.where(np.eye(self.n_agents, dtype=np.bool), 0, self.penalty)
         self.network_buffer[:, :, 1] = -1  # no parent references yet
 
         self.old_buffer[:] = self.network_buffer
@@ -492,7 +499,7 @@ class MultiAgentEnv(gym.Env):
 
         # find channels where transmission would be possible
         successful_tx = np.zeros((self.n_agents, self.n_agents))
-        successful_tx[tx_sinr >= self.min_SINR] = 1
+        successful_tx[tx_sinr >= self.min_SINR_dbm] = 1
 
         # only keep those that did try to communicate
         successful_tx_power = np.where(successful_tx, tx_adj_mat_power_db, np.NINF)
@@ -510,7 +517,7 @@ class MultiAgentEnv(gym.Env):
 
     # Given current positions, will return who agents should communicate with to form the Minimum Spanning Tree
     def mst_controller(self, mst_p=0.1, selective_comms=True):
-
+        self.comm_model = "tw"
         if self.recompute_solution or self.mst_action is None:
             distances = self.compute_distances()
             G = nx.from_numpy_array(distances, create_using=nx.Graph())
@@ -529,6 +536,7 @@ class MultiAgentEnv(gym.Env):
 
     # Chooses a random action from the action space
     def random_controller(self, random_p=0.1):
+        self.comm_model = "push"
         attempted_trans = self.action_space.sample()
         tx_prob = np.random.uniform(size=(self.n_agents,))
         return np.where(tx_prob < random_p, attempted_trans,
@@ -536,6 +544,7 @@ class MultiAgentEnv(gym.Env):
 
     # Chooses a random action from the action space
     def roundrobin_controller(self):
+        self.comm_model = "tw"
         center_agent = np.argmin(np.power(self.x[:, 0], 2) + np.power(self.x[:, 1], 2))
         tx_choice = np.arange(self.n_agents) * len(self.power_levels)
         tx_idx = self.timestep % (self.n_agents - 1)
@@ -604,7 +613,7 @@ class MultiAgentEnv(gym.Env):
 
     def noise_floor_distance(self):
         power_mW = 10 ** (np.max(self.power_levels) / 10)
-        snr_term = np.divide(power_mW, self.gaussian_noise_mW * np.power(10, self.min_SINR / 10))
+        snr_term = np.divide(power_mW, self.gaussian_noise_mW * np.power(10, self.min_SINR_dbm / 10))
         right_exp_term = (10 * np.log10(snr_term)) - (20 * np.log10(self.carrier_frequency_ghz * 10 ** 9)) + 147.55
         exponent = np.divide(1, 10 * self.path_loss_exponent) * right_exp_term
         return np.power(10, exponent)
@@ -621,7 +630,7 @@ class MultiAgentEnv(gym.Env):
         free_space_path_loss = 10 * self.path_loss_exponent * np.log10(distance) + 20 * np.log10(
             self.carrier_frequency_ghz * 10 ** 9) - 147.55  # dB
         channel_gain = np.power(10, free_space_path_loss / 10)  # this is now a unitless ratio
-        gamma = np.power(10, self.min_SINR / 10)
+        gamma = np.power(10, self.min_SINR_dbm / 10)
 
         return 10 * np.log10(channel_gain * gamma * self.gaussian_noise_mW)
 
