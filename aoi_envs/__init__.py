@@ -13,15 +13,6 @@ register(
 ###################################################################
 
 register(
-    id='StationaryPushEnv-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=1000,
-    kwargs={'comm_model': 'push'},
-)
-
-###################################################################
-
-register(
     id='PowerLevel10Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,

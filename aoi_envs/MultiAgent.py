@@ -20,8 +20,8 @@ TIMESTEP = 0.5
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=50, initialization="Grid",
-                 aoi_reward=True, episode_length=500.0, comm_model="tw"):
+    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=40, initialization="Grid",
+                 aoi_reward=True, episode_length=300.0, comm_model="tw"):
         super(MultiAgentEnv, self).__init__()
 
         # Problem parameters
@@ -30,7 +30,6 @@ class MultiAgentEnv(gym.Env):
         self.r_max = 5000.0
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
         self.n_edges = self.n_agents * self.n_agents
-
 
         self.carrier_frequency_ghz = 2.4
         self.min_SINR_dbm = 1.0  # 10-15 is consider unreliable, cited paper uses -4

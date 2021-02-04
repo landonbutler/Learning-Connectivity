@@ -140,7 +140,7 @@ def run_experiment(args, section_name='', env=None, test_env=None):
         'normalize_reward': args.get('normalize_reward', False),
         'n_env': args.getint('n_env', 4),
         'nminibatches': args.getint('n_env', 4),
-        'n_steps': args.getint('n_steps', 10),
+        'n_steps': args.getint('n_steps', 64),
         'checkpoint_timesteps': args.getint('checkpoint_timesteps', 10000),
         'total_timesteps': args.getint('total_timesteps', 50000000),
         'train_lr': args.getfloat('train_lr', 1e-4),
