@@ -11,6 +11,49 @@ register(
 )
 
 ###################################################################
+register(
+    id='StationarySINR05Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'min_sinr': 0.5},
+)
+
+register(
+    id='StationarySINR10Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'min_sinr': 1.0},
+)
+
+register(
+    id='StationarySINR20Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'min_sinr': 2.0},
+)
+
+register(
+    id='StationarySINR50Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'min_sinr': 5.0},
+)
+
+register(
+    id='StationarySINR80Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'min_sinr': 8.0},
+)
+
+register(
+    id='StationarySINR120Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'min_sinr': [12.0]},
+)
+
+###################################################################
 
 register(
     id='PowerLevel10Env-v0',
