@@ -47,8 +47,8 @@ def main():
     #     for param in params:
     #         environments.append(env_name + param + postfix)
 
-    # environments = ['StationaryEnv-v0']
-    environments = ['MobileEnv10-v0']
+    environments = ['StationaryEnv-v0']
+    # environments = ['MobileEnv10-v0']
 
     baselines = ['Random', 'MST']
 
