@@ -71,8 +71,6 @@ def main():
             for p in probabilities:
                 m, _ = eval_baseline(env, baseline, p, n_episodes=20)
                 means.append(m)
-                print(env.env.comm_model)
-                print(m)
             max_ind = np.argmax(means)
             best_prob = probabilities[max_ind]
             final_mean, final_std = eval_baseline(env, baseline, best_prob, n_episodes=100)
@@ -83,7 +81,7 @@ def main():
         print(best_results)
         data_to_csv.append(best_results)
 
-    filename = "tuned_push.csv"
+    filename = "tuned.csv"
     
     # writing to csv file  
     with open(filename, 'w') as csvfile:  

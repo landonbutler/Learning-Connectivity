@@ -19,7 +19,7 @@ TIMESTEP = 0.5
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=20, initialization="Grid",
+    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=20, initialization="Random",
                  aoi_reward=True, episode_length=500.0, comm_model="tw", min_sinr=1.0):
         super(MultiAgentEnv, self).__init__()
 
@@ -224,6 +224,11 @@ class MultiAgentEnv(gym.Env):
         }
         return data_dict
 
+    def algebraic_connectivity(self, adjacency_matrix):
+        graph_laplacian = np.diag(np.sum(adjacency_matrix, axis=1)) - adjacency_matrix
+        v, _ = np.linalg.eigh(graph_laplacian)
+        return v[1]
+
     def reset(self):
         if self.initial_formation is "Grid":
             x, y = self.compute_grid_with_bias(1, 1, self.n_agents)
@@ -246,7 +251,14 @@ class MultiAgentEnv(gym.Env):
             self.x[:, 1] = agent_cluster_assignment_y[perm] + np.random.uniform(-cluster_offset, cluster_offset,
                                                                                 size=(self.n_agents,))
         else:
-            self.x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
+            alg_connect = 0.0
+            while np.around(alg_connect, 10) == 0.0:
+                self.x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
+                dist = self.compute_distances()
+                np.fill_diagonal(dist, 0.0)
+                dist = (dist <= self.fraction_of_rmax[0] * self.distance_scale * 2 * np.sqrt(2)).astype(np.float)
+                alg_connect = self.algebraic_connectivity(dist)
+
         self.mst_action = None
         self.network_connected = False
         self.timestep = 0
