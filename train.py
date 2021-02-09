@@ -6,7 +6,7 @@ import glob
 import sys
 from pathlib import Path
 from stable_baselines.common import BaseRLModel
-from stable_baselines.common.vec_env import SubprocVecEnv, VecNormalize
+from stable_baselines.common.vec_env import SubprocVecEnv, VecNormalize, DummyVecEnv
 
 from aoi_learner.gnn_policy import GNNPolicy
 from aoi_learner.ppo2 import PPO2
@@ -25,22 +25,19 @@ parser.set_defaults(test=False, path='cfg/nl.cfg')
 cmd_args = parser.parse_args()
 
 
-def train_helper(env_param, test_env_param, train_param, policy_fn, policy_param, directory, env=None, test_env=None):
+def train_helper(env_param, test_env_param, train_param, policy_fn, policy_param, directory):
     save_dir = Path(directory)
     tb_dir = save_dir / 'tb'
     ckpt_dir = save_dir / 'ckpt'
     for d in [save_dir, tb_dir, ckpt_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    if env is None:
-        # env = SubprocVecEnv([env_param['make_env']] * train_param['n_env'])
-        # env.close()
-        env = SubprocVecEnv([env_param['make_env']] * train_param['n_env'])
-        if 'normalize_reward' in train_param and train_param['normalize_reward']:
-            print('Reward will be normalized during training')
-            env = VecNormalize(env, norm_obs=False, norm_reward=True)
-    if test_env is None:
-        test_env = SubprocVecEnv([test_env_param['make_env']])
+    env = DummyVecEnv([env_param['make_env']] * train_param['n_env'])
+    if 'normalize_reward' in train_param and train_param['normalize_reward']:
+        print('Reward will be normalized during training')
+        env = VecNormalize(env, norm_obs=False, norm_reward=True)
+
+    test_env = DummyVecEnv([test_env_param['make_env']])
 
     if train_param['use_checkpoint']:
         # Find latest checkpoint index.
@@ -104,8 +101,6 @@ def train_helper(env_param, test_env_param, train_param, policy_fn, policy_param
         ckpt_idx += 1
 
     print('Finished.')
-    # env.close()
-    # test_env.close()
     del model
 
     return env, test_env
@@ -124,7 +119,6 @@ def run_experiment(args, section_name='', env=None, test_env=None):
     policy_fn = GNNPolicy
     policy_param['n_gnn_layers'] = args.getint('n_gnn_layers', 1)
     env_name = args.get('env', 'StationaryEnv-v0')
-
 
     def make_env():
         env = gym.make(env_name)
@@ -160,8 +154,7 @@ def run_experiment(args, section_name='', env=None, test_env=None):
         train_param=train_param,
         policy_fn=policy_fn,
         policy_param=policy_param,
-        directory=directory,
-        env=env, test_env=test_env)
+        directory=directory)
     return env, test_env
 
 
@@ -170,19 +163,9 @@ def main():
     config_file = path.join(path.dirname(__file__), fname)
     config = configparser.ConfigParser()
     config.read(config_file)
-    last_env_name = 'StationaryEnv-v0'
     if config.sections():
-        env = None
-        test_env = None
-
         for section_name in config.sections():
-            if last_env_name != config[section_name].get('env', 'StationaryEnv-v0'):
-                env = None
-                test_env = None
-
-            env, test_env = run_experiment(config[section_name], section_name, env, test_env)
-            last_env_name = config[section_name].get('env', 'StationaryEnv-v0')
-
+            _, test_env = run_experiment(config[section_name], section_name)
             directory = Path('models/' + config[section_name].get('name') + section_name)
             save_dir = Path(directory)
             ckpt_dir = save_dir / 'ckpt'
@@ -195,6 +178,7 @@ def main():
         ckpt_dir = save_dir / 'ckpt'
         if cmd_args.test:
             find_best_model(ckpt_dir, test_env)
+
 
 if __name__ == '__main__':
     main()

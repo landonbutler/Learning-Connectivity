@@ -6,7 +6,7 @@ N_NODE_FEAT = 6
 
 class MobileEnv(MultiAgentEnv):
 
-    def __init__(self, agent_velocity=1.0, initialization='Grid', biased_velocities=False, flocking=False,
+    def __init__(self, agent_velocity=1.0, initialization='Random', biased_velocities=False, flocking=False,
                  random_acceleration=True, aoi_reward=True, flocking_position_control=False, num_agents=20):
         super().__init__(eavesdropping=True, fractional_power_levels=[0.25], initialization=initialization,
                          aoi_reward=aoi_reward, num_agents=num_agents)

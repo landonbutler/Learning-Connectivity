@@ -10,6 +10,14 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
 )
 
+register(
+    id='StationaryGridEnv-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'initialization': 'Random'},
+)
+
+
 ###################################################################
 register(
     id='StationarySINR05Env-v0',
@@ -169,6 +177,14 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'agent_velocity': 0.1},
 )
+
+register(
+    id='MobileEnv015-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 0.15},
+)
+
 
 register(
     id='MobileEnv025-v0',

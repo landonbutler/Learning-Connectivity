@@ -7,7 +7,6 @@ import aoi_learner
 import os
 import sys
 from aoi_learner.ppo2 import PPO2
-from stable_baselines.common.vec_env import SubprocVecEnv
 from stable_baselines.common.base_class import BaseRLModel
 
 
@@ -72,8 +71,8 @@ def find_best_model(all_ckpt_dir, test_env, n_episodes=50):
     rewards = []
 
     # Test every 10th checkpoint.
-    ckpt_list = ckpt_list[0::5]
-  
+    ckpt_list = ckpt_list[-5:]
+
     for ckpt in ckpt_list:
         mean_reward, std_reward = test_one(ckpt, test_env, n_episodes)
         print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
@@ -87,9 +86,9 @@ def find_best_model(all_ckpt_dir, test_env, n_episodes=50):
 
 
 if __name__ == '__main__':
-    env = gym.make('StationaryGridEnv-v0')
+    env = gym.make('StationaryEnv-v0')
     env = gym.wrappers.FlattenDictWrapper(env, dict_keys=env.env.keys)
 
     # Specify pre-trained model checkpoint folder (containing all checkpoints).
     all_ckpt_dir = 'models/' + sys.argv[1] + '/ckpt'
-    find_best_model(all_ckpt_dir, env, 10)
+    find_best_model(all_ckpt_dir, env, 100)

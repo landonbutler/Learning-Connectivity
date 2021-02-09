@@ -82,7 +82,6 @@ def eval_model(env, model, N, render=False):
                 timestep += 1
             if args.gif:
                 save_gif(k, timestep, gif_fp, controller)
-            # print(results['reward'][k])
             bar.next()
     return results
 
@@ -104,35 +103,10 @@ if __name__ == '__main__':
     if args.learner or len(model_name) > 0:
         import aoi_learner
         from aoi_learner.ppo2 import PPO2
-        from stable_baselines.common.vec_env import SubprocVecEnv
+        from stable_baselines.common.vec_env import DummyVecEnv
         from stable_baselines.common.base_class import BaseRLModel
 
-        vec_env = SubprocVecEnv([make_env])
-
-        # # Specify pre-trained model checkpoint file.
-        #
-        # # model_name = 'models/rl_Landon/RL_GNN_5_ENT5_1/RL_GNN_5_ENT5_1.pkl'
-        # # model_name = 'models/rl_nonlinear_9_3/ckpt/ckpt_146.pkl'
-        # # model_name = 'models/rl3_mobile_1000_1/ckpt/ckpt_120.pkl'
-        # model_name = 'models/rl3_mobile_2000_1/ckpt/ckpt_290.pkl'
-        # model_name = 'models/eaves6_1/ckpt/ckpt_200.pkl'
-        # # model_name = 'models/rl_Landon/EVE_GNN_R500_4/EVE_GNN_R500_4.pkl'
-        # model_name = 'models/power8_1/ckpt/ckpt_170.pkl'
-        # model_name = 'models/power8_3/ckpt/ckpt_160.pkl'
-        # model_name = 'models/nl10_025_1/ckpt/ckpt_200.pkl'
-        # model_name = 'models/rl_Landon/EVE_GNN_5.pkl'
-        # model_name = 'models/nl11_2/ckpt/ckpt_180.pkl'
-        # model_name = 'models/nl12_4/ckpt/ckpt_040.pkl'
-        #
-        # model_name = 'models/mobile12_10_2/ckpt/ckpt_040.pkl'
-        #
-        # model_name = 'models/power12_1/ckpt/ckpt_040.pkl'
-        # model_name = 'models/nl13_1/ckpt/ckpt_030.pkl'
-        # # model_name = 'models/5_Flocking/content/models/nl12_/ckpt/ckpt_030.pkl'
-        # # model_name = 'models/mobile12_05_2/ckpt/ckpt_040.pkl'
-        # model_name = 'models/flocking_ckpt_030.pkl'
-        # model_name = 'models/power13_025/ckpt/ckpt_040.pkl'
-        # model_name = 'models/mobile12_05_2/ckpt/ckpt_040.pkl'
+        vec_env = DummyVecEnv([make_env])
 
         # load the dictionary of parameters from file
         model_params, params = BaseRLModel._load_from_file(model_name)
