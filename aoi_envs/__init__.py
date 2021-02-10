@@ -10,11 +10,27 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
 )
 
+###################################################################
+
 register(
-    id='StationaryGridEnv-v0',
+    id='StationaryP2P5Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'initialization': 'Random'},
+    kwargs={'eavesdropping': False, 'num_agents': 5},
+)
+
+register(
+    id='StationaryP2P10Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'eavesdropping': False, 'num_agents': 10},
+)
+
+register(
+    id='StationaryP2P20Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'eavesdropping': False, 'num_agents': 20},
 )
 
 

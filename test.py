@@ -24,7 +24,7 @@ parser.add_argument('-e', '--env', type=str)
 parser.add_argument('-p', '--path', dest='path', type=str)
 parser.add_argument('-n', '--n_episodes', dest='n_episodes', type=int)
 
-parser.set_defaults(random=True, mst=False, greedy=False, visualize=False, learner=False, roundrobin=False,
+parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, roundrobin=False,
                     gif=False, path='', env='StationaryEnv-v0', n_episodes=10)
 args = parser.parse_args()
 

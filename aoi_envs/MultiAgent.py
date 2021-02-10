@@ -13,17 +13,18 @@ font = {'family': 'sans-serif',
         'weight': 'bold',
         'size': 11}
 
-N_NODE_FEAT = 6
+N_NODE_FEAT = 7
 N_EDGE_FEAT = 1
 TIMESTEP = 0.5
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=20, initialization="Random",
-                 aoi_reward=True, episode_length=500.0, comm_model="tw", min_sinr=1.0):
+    def __init__(self, fractional_power_levels=[0.25, 0.0], eavesdropping=True, num_agents=20, initialization="Random",
+                 aoi_reward=True, episode_length=500.0, comm_model="tw", min_sinr=1.0, last_comms=True):
         super(MultiAgentEnv, self).__init__()
 
         # Problem parameters
+        self.last_comms = last_comms
         self.n_agents = num_agents
         self.n_nodes = self.n_agents * self.n_agents
         self.r_max = 5000.0
@@ -150,6 +151,12 @@ class MultiAgentEnv(gym.Env):
 
         self.tx_power = attempted_transmissions % len(self.power_levels)
 
+        self.attempted_transmissions = np.where(self.power_levels[self.tx_power.astype(np.int)] > 0.0,
+                                                self.attempted_transmissions, np.arange(self.n_agents))
+
+        if self.last_comms:
+            self.network_buffer[np.arange(self.n_agents), self.attempted_transmissions, 6] = self.timestep
+
         if self.is_interference:
             # calculates interference from attempted transmissions
             transmission_indexes, response_indexes = self.interference(self.attempted_transmissions, self.tx_power)
@@ -185,6 +192,10 @@ class MultiAgentEnv(gym.Env):
         self.relative_buffer[:] = self.network_buffer
         self.relative_buffer[:, :, 0] -= self.timestep
         self.relative_buffer[:, :, 0] /= self.episode_length
+
+        if self.last_comms:
+            self.relative_buffer[:, :, 6] -= self.timestep
+            self.relative_buffer[:, :, 6] /= self.episode_length
 
         # fills rows of a nxn matrix, subtract that from relative_network_buffer
         self.relative_buffer[:, :, 2:4] -= self.x[:, 0:2].reshape(self.n_agents, 1, 2)
@@ -597,9 +608,9 @@ class MultiAgentEnv(gym.Env):
     def update_receiver_buffers(self, tx_idx, receivers):
         if len(receivers) == 0:
             return
-        self.network_buffer[receivers, :, :] = np.where(
+        self.network_buffer[receivers, :, 0:6] = np.where(
             (self.old_buffer[tx_idx, :, 0] > self.network_buffer[receivers, :, 0])[:, :, np.newaxis],
-            self.old_buffer[tx_idx, :, :][np.newaxis, :], self.network_buffer[receivers, :, :])
+            self.old_buffer[tx_idx, :, 0:6][np.newaxis, :], self.network_buffer[receivers, :, 0:6])
         self.network_buffer[receivers, tx_idx, 1] = receivers
 
     def find_tree_hops(self):
@@ -637,6 +648,9 @@ class MultiAgentEnv(gym.Env):
         return np.array(power_levels)
 
     def find_power_level_by_dist(self, distance):
+        if distance == 0.0:
+            return 0.0
+
         free_space_path_loss = 10 * self.path_loss_exponent * np.log10(distance) + 20 * np.log10(
             self.carrier_frequency_ghz * 10 ** 9) - 147.55  # dB
         channel_gain = np.power(10, free_space_path_loss / 10)  # this is now a unitless ratio
