@@ -19,7 +19,7 @@ TIMESTEP = 0.5
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=20, initialization="Random",
+    def __init__(self, fractional_power_levels=[0.25], eavesdropping=True, num_agents=40, initialization="Random",
                  aoi_reward=True, episode_length=500.0, comm_model="tw", min_sinr=1.0):
         super(MultiAgentEnv, self).__init__()
 
@@ -329,9 +329,11 @@ class MultiAgentEnv(gym.Env):
                                            va='center', s="", fontsize=11,
                                            bbox={'facecolor': 'lightsteelblue', 'alpha': 0.5, 'pad': 5})
 
-                self.agent_markers1, = self.ax1.plot([], [], 'bo')  # Returns a tuple of line objects, thus the comma
+                self.agent_markers1, = self.ax1.plot([], [], marker='o', color='royalblue', linestyle = '')  # Returns a tuple of line objects, thus the comma
                 self.agent0_marker1, = self.ax1.plot([], [], 'go')
-                self.agent_markers2, = self.ax2.plot([], [], 'bo')
+                self.agent_markers1_eaves, = self.ax1.plot([], [], marker='o', color='lightsteelblue', linestyle = '')  # Returns a tuple of line objects, thus the comma
+
+                self.agent_markers2, = self.ax2.plot([], [], marker='o', color='royalblue', linestyle = '')
                 self.agent0_marker2, = self.ax2.plot([], [], 'go')
 
                 self.arrows = []
@@ -356,13 +358,20 @@ class MultiAgentEnv(gym.Env):
                     self.ax1.yaxis.set_major_formatter(mticker.FuncFormatter(g))
                     self.ax2.xaxis.set_major_formatter(mticker.FuncFormatter(g))
                     self.ax2.yaxis.set_major_formatter(mticker.FuncFormatter(g))
+            eaves_x = np.where(np.sum(self.eavesdroppers, axis=0) > 0, self.x[:, 0], 0)
+            eaves_y = np.where(np.sum(self.eavesdroppers, axis=0) > 0, self.x[:, 1], 0)
+            noneaves_x = np.where(np.sum(self.eavesdroppers, axis=0) == 0, self.x[:, 0], 0)
+            noneaves_y = np.where(np.sum(self.eavesdroppers, axis=0) == 0, self.x[:, 1], 0)
+
+            self.agent_markers1.set_xdata(np.ma.masked_equal(noneaves_x,0))
+            self.agent_markers1.set_ydata(np.ma.masked_equal(noneaves_y,0))
+            self.agent0_marker1.set_xdata(self.x[0, 0])
+            self.agent0_marker1.set_ydata(self.x[0, 1])
+            self.agent_markers1_eaves.set_xdata(np.ma.masked_equal(eaves_x,0))
+            self.agent_markers1_eaves.set_ydata(np.ma.masked_equal(eaves_y,0))
 
             if self.mobile_agents or self.timestep <= 1:
                 # Plot the agent locations at the start of the episode
-                self.agent_markers1.set_xdata(self.x[:, 0])
-                self.agent_markers1.set_ydata(self.x[:, 1])
-                self.agent0_marker1.set_xdata(self.x[0, 0])
-                self.agent0_marker1.set_ydata(self.x[0, 1])
                 self.agent_markers2.set_xdata(self.x[:, 0])
                 self.agent_markers2.set_ydata(self.x[:, 1])
                 self.agent0_marker2.set_xdata(self.x[0, 0])
