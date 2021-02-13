@@ -82,6 +82,7 @@ def eval_model(env, model, N, render=False):
                 timestep += 1
             if args.gif:
                 save_gif(k, timestep, gif_fp, controller)
+            print(results['reward'][k])
             bar.next()
     return results
 

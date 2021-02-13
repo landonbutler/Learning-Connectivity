@@ -57,7 +57,7 @@ def test_one(ckpt, test_env, n_episodes=100):
     return mean_reward, std_reward
 
 
-def find_best_model(all_ckpt_dir, test_env, n_episodes=50):
+def find_best_model(all_ckpt_dir, test_env):
 
     # Get the path of the last checkpoint.
     try:
@@ -71,24 +71,24 @@ def find_best_model(all_ckpt_dir, test_env, n_episodes=50):
     rewards = []
 
     # Test every 10th checkpoint.
-    ckpt_list = ckpt_list[-5:]
+    ckpt_list = ckpt_list[-10:]
 
     for ckpt in ckpt_list:
-        mean_reward, std_reward = test_one(ckpt, test_env, n_episodes)
+        mean_reward, std_reward = test_one(ckpt, test_env, 50)
         print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
         rewards.append(mean_reward)
     
     best_ckpt = ckpt_list[rewards.index(max(rewards))]
     print("Best Model: " + best_ckpt)
 
-    mean_reward, std_reward = test_one(best_ckpt, test_env, n_episodes)
+    mean_reward, std_reward = test_one(best_ckpt, test_env, 100)
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
 
 
 if __name__ == '__main__':
-    env = gym.make('StationaryEnv-v0')
+    env = gym.make('Stationary40Env-v0')
     env = gym.wrappers.FlattenDictWrapper(env, dict_keys=env.env.keys)
 
     # Specify pre-trained model checkpoint folder (containing all checkpoints).
     all_ckpt_dir = 'models/' + sys.argv[1] + '/ckpt'
-    find_best_model(all_ckpt_dir, env, 100)
+    find_best_model(all_ckpt_dir, env)

@@ -8,29 +8,14 @@ register(
     id='StationaryEnv-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-)
-
-###################################################################
-
-register(
-    id='StationaryP2P5Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'eavesdropping': False, 'num_agents': 5},
+    kwargs={'fractional_power_levels': [0.25, 0.0]},
 )
 
 register(
-    id='StationaryP2P10Env-v0',
+    id='Stationary2Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'eavesdropping': False, 'num_agents': 10},
-)
-
-register(
-    id='StationaryP2P20Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'eavesdropping': False, 'num_agents': 20},
+    kwargs={'fractional_power_levels': [0.25], 'num_agents': 40},
 )
 
 
@@ -129,6 +114,13 @@ register(
 )
 
 ###################################################################
+
+register(
+    id='Stationary20Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'num_agents': 20},
+)
 
 register(
     id='Stationary30Env-v0',
@@ -260,6 +252,12 @@ register(
     kwargs={'agent_velocity': 1.0, 'num_agents': 10},
 )
 
+register(
+    id='MobileEnv10N20-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.0, 'num_agents': 20},
+)
 
 register(
     id='MobileEnv10N40-v0',

@@ -19,7 +19,7 @@ TIMESTEP = 0.5
 
 class MultiAgentEnv(gym.Env):
 
-    def __init__(self, fractional_power_levels=[0.25, 0.0], eavesdropping=True, num_agents=20, initialization="Random",
+    def __init__(self, fractional_power_levels=[0.25, 0.0], eavesdropping=True, num_agents=40, initialization="Random",
                  aoi_reward=True, episode_length=500.0, comm_model="tw", min_sinr=1.0, last_comms=True):
         super(MultiAgentEnv, self).__init__()
 

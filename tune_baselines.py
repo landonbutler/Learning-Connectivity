@@ -47,12 +47,12 @@ def main():
     #     for param in params:
     #         environments.append(env_name + param + postfix)
 
-    environments = ['StationaryEnv-v0']
+    environments = ['MobileEnv015-v0']
     # environments = ['MobileEnv10-v0']
 
     baselines = ['Random', 'MST']
 
-    probabilities = [0.04, 0.06, 0.08, 0.1, 0.12, 0.15, 0.18, 0.2, 0.22, 0.25, 0.5]
+    probabilities = [0.04, 0.06, 0.08, 0.1] #, 0.12, 0.15, 0.18, 0.2, 0.22, 0.25, 0.5]
     # probabilities = [0.08, 0.1, 0.12, 0.15]
     fields = ['EnvName']
     for i in baselines:
