@@ -1,10 +1,11 @@
 #!/bin/bash
 image_name=kate_tensorflow
-project_volume=/raid0/docker-raid/kate/gnn:/gnn/ 
+container_name="${USER}_tf"
+project_volume=/raid0/docker-raid/${USER}/gnn:/gnn/ 
 
 xhost +local:root
 docker run -it \
-    --name="kate_tf" \
+    --name=${container_name}\
     --net=host \
     --privileged \
     -p 0.0.0.0:6006:6006 \
