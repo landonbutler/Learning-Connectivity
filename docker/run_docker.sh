@@ -1,9 +1,8 @@
 #!/bin/bash
 image_name=kate_tensorflow
-gpu_id=${2-2}
+project_volume=/raid0/docker-raid/kate/gnn:/gnn/ 
 
 xhost +local:root
-NV_GPU=${gpu_id} \
 docker run -it \
     --name="kate_tf" \
     --net=host \
@@ -15,6 +14,6 @@ docker run -it \
     --ulimit memlock=-1 \
     --ulimit stack=67108864 \
     --gpus all \
-    -v /raid0/docker-raid/kate/gnn:/gnn/ \
+    -v ${project_volume} \
     ${image_name} \
     /bin/bash
