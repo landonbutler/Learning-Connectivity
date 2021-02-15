@@ -8,7 +8,9 @@ import os
 import sys
 from aoi_learner.ppo2 import PPO2
 from stable_baselines.common.base_class import BaseRLModel
+from stable_baselines.common.vec_env import DummyVecEnv
 
+N_ENVS = 10
 
 def eval_model(env, model, n_episodes):
     """
@@ -16,7 +18,7 @@ def eval_model(env, model, n_episodes):
     """
     results = {'reward': np.zeros(n_episodes)}
     with Bar('Eval', max=n_episodes) as bar:
-        for k in range(n_episodes):
+        for k in range(n_episodes//N_ENVS):
             done = False
             obs = env.reset()
             state = None
@@ -28,7 +30,7 @@ def eval_model(env, model, n_episodes):
                 obs, rewards, done, info = env.step(action)
 
                 # Record results.
-                results['reward'][k] += rewards
+                results['reward'][k:(k+N_ENVS)] += np.array(rewards)
                 timestep += 1
             bar.next()
     return results
@@ -86,8 +88,12 @@ def find_best_model(all_ckpt_dir, test_env):
 
 
 if __name__ == '__main__':
-    env = gym.make('Stationary40Env-v0')
-    env = gym.wrappers.FlattenDictWrapper(env, dict_keys=env.env.keys)
+    def make_env():
+        env = gym.make('Stationary40Env-v0')
+        env = gym.wrappers.FlattenDictWrapper(env, dict_keys=env.env.keys)
+        return env
+
+    env = DummyVecEnv([make_env] * N_ENVS)
 
     # Specify pre-trained model checkpoint folder (containing all checkpoints).
     all_ckpt_dir = 'models/' + sys.argv[1] + '/ckpt'
