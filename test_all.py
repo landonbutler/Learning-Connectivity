@@ -18,7 +18,6 @@ def eval_model(env, model, n_episodes):
     Evaluate a model against an environment over N games.
     """
     results = {'reward': np.zeros(n_episodes)}
-    # with Bar('Eval', max=n_episodes) as bar:
     for k in range(n_episodes // N_ENVS):
         done = [False]
         obs = env.reset()
@@ -33,7 +32,6 @@ def eval_model(env, model, n_episodes):
             # Record results.
             results['reward'][k * N_ENVS:(k * N_ENVS + N_ENVS)] += np.array(rewards)
             timestep += 1
-            # bar.next()
 
     return results
 
