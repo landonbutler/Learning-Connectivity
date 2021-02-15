@@ -10,29 +10,31 @@ from aoi_learner.ppo2 import PPO2
 from stable_baselines.common.base_class import BaseRLModel
 from stable_baselines.common.vec_env import DummyVecEnv
 
-N_ENVS = 10
+N_ENVS = 25
+
 
 def eval_model(env, model, n_episodes):
     """
     Evaluate a model against an environment over N games.
     """
     results = {'reward': np.zeros(n_episodes)}
-    with Bar('Eval', max=n_episodes) as bar:
-        for k in range(n_episodes//N_ENVS):
-            done = False
-            obs = env.reset()
+    # with Bar('Eval', max=n_episodes) as bar:
+    for k in range(n_episodes // N_ENVS):
+        done = [False]
+        obs = env.reset()
+        state = None
+        timestep = 1
+        # Run one game.
+        while not np.any(done):
+            action, state = model.predict(obs, state=state, deterministic=False)
             state = None
-            timestep = 1
-            # Run one game.
-            while not done:
-                action, state = model.predict(obs, state=state, deterministic=False)
-                state = None
-                obs, rewards, done, info = env.step(action)
+            obs, rewards, done, info = env.step(action)
 
-                # Record results.
-                results['reward'][k:(k+N_ENVS)] += np.array(rewards)
-                timestep += 1
-            bar.next()
+            # Record results.
+            results['reward'][k * N_ENVS:(k * N_ENVS + N_ENVS)] += np.array(rewards)
+            timestep += 1
+            # bar.next()
+
     return results
 
 
@@ -60,7 +62,6 @@ def test_one(ckpt, test_env, n_episodes=100):
 
 
 def find_best_model(all_ckpt_dir, test_env):
-
     # Get the path of the last checkpoint.
     try:
         ckpt_list = sorted(glob.glob(str(all_ckpt_dir) + '/ckpt_*.pkl'))
@@ -79,7 +80,7 @@ def find_best_model(all_ckpt_dir, test_env):
         mean_reward, std_reward = test_one(ckpt, test_env, 50)
         print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
         rewards.append(mean_reward)
-    
+
     best_ckpt = ckpt_list[rewards.index(max(rewards))]
     print("Best Model: " + best_ckpt)
 
@@ -92,6 +93,7 @@ if __name__ == '__main__':
         env = gym.make('Stationary40Env-v0')
         env = gym.wrappers.FlattenDictWrapper(env, dict_keys=env.env.keys)
         return env
+
 
     env = DummyVecEnv([make_env] * N_ENVS)
 
