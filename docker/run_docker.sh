@@ -1,9 +1,11 @@
 #!/bin/bash
+use_gpu=4
 image_name=kate_tensorflow
-container_name="${USER}_tf"
+container_name="${USER}_tf${use_gpu}"
 project_volume=/raid0/docker-raid/${USER}/gnn:/gnn/ 
 
 xhost +local:root
+export CUDA_VISIBLE_DEVICES=${use_gpu}
 docker run -it \
     --name=${container_name}\
     --net=host \
