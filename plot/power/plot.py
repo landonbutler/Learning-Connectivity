@@ -38,6 +38,7 @@ plt.legend(loc='upper right')
 
 # Save plot as .eps
 plt.savefig(directory + 'power.eps', format='eps', bbox_inches='tight')
+plt.savefig(directory + 'power.png', format='png', bbox_inches='tight')
 plt.show()
 
 

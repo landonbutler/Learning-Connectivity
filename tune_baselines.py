@@ -22,6 +22,8 @@ def eval_baseline(env, baseline, probability, n_episodes=20):
                 action = env.env.mst_controller(probability)
             elif baseline == 'Random':
                 action = env.env.random_controller(probability)
+            elif baseline == 'RR':
+                action = env.env.roundrobin_controller()
             else:
                 print('Not Baseline')
 
@@ -47,10 +49,10 @@ def main():
     #     for param in params:
     #         environments.append(env_name + param + postfix)
 
-    environments = ['Stationary40Env-v0']
+    environments = ['MobileEnv10-v0']
     # environments = ['MobileEnv10-v0']
 
-    baselines = ['Random', 'MST']
+    baselines = ['Random', 'MST', 'RR']
 
     probabilities = [0.04, 0.06, 0.08, 0.1, 0.12, 0.15, 0.18, 0.2, 0.22, 0.25]
     # probabilities = [0.08, 0.1, 0.12, 0.15]
@@ -73,7 +75,7 @@ def main():
                 means.append(m)
             max_ind = np.argmax(means)
             best_prob = probabilities[max_ind]
-            final_mean, final_std = eval_baseline(env, baseline, best_prob, n_episodes=100)
+            final_mean, final_std = eval_baseline(env, baseline, best_prob, n_episodes=1000)
 
             best_results.append(final_mean)
             best_results.append(final_std)
@@ -81,7 +83,7 @@ def main():
         print(best_results)
         data_to_csv.append(best_results)
 
-    filename = "tuned.csv"
+    filename = "tuned-mobile20.csv"
     
     # writing to csv file  
     with open(filename, 'w') as csvfile:  
