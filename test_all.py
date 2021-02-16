@@ -8,7 +8,7 @@ import os
 import sys
 from aoi_learner.ppo2 import PPO2
 from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.vec_env import DummyVecEnv
+from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
 
 N_ENVS = 25
 
@@ -87,11 +87,11 @@ def find_best_model(all_ckpt_dir, test_env):
 
 
 if __name__ == '__main__':
+
     def make_env():
-        env = gym.make('Stationary40Env-v0')
+        env = gym.make(sys.argv[2])
         env = gym.wrappers.FlattenDictWrapper(env, dict_keys=env.env.keys)
         return env
-
 
     env = DummyVecEnv([make_env] * N_ENVS)
 
