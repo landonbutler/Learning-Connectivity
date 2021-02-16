@@ -5,14 +5,15 @@ plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 
 # Data files
 directory = ''
-fnames = ['nl', 'rr', 'mst']
+fnames = ['nl', 'rr', 'mst', 'random']
 fnames = [directory + fname + '.csv' for fname in fnames]
-n_trials = 100
+n_trials = 1000
+gnn_n_trials = 100
 
 # Curve appearance
-colors = ['tab:orange', 'tab:purple', 'tab:green']
-linestyles = ['-', '-.', '--']
-labels = ['Non-Linear Agg. GNN', 'Round Robin', 'MST']
+colors = ['tab:orange', 'tab:purple', 'tab:green', 'tab:pink']
+linestyles = ['-', '-.', '--', 'dotted']
+labels = ['Non-Linear Agg. GNN', 'Round Robin', 'MST', 'Random Flooding']
 
 
 # Generate plot
@@ -21,7 +22,12 @@ ax = fig.add_subplot(1, 1, 1)
 # plt.yscale('log')
 for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
     data = np.loadtxt(fname, skiprows=1)
-    plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
+    trials = 0
+    if fname is "nl":
+        trials = gnn_n_trials
+    else:
+        trials = n_trials
+    plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(trials), label=label, color=color, ls=ls)
 
 # ax.set_yscale('log')
 plt.ylabel('Avg. Cost')
