@@ -68,49 +68,35 @@ register(
     id='PowerLevel10Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'fractional_power_levels': [1.0]},
+    kwargs={'fractional_power_levels': [1.0, 0.0]},
 )
 
 register(
     id='PowerLevel075Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'fractional_power_levels': [0.75]},
+    kwargs={'fractional_power_levels': [0.75, 0.0]},
 )
 
 register(
     id='PowerLevel05Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'fractional_power_levels': [0.5]},
+    kwargs={'fractional_power_levels': [0.5, 0.0]},
 )
 
 register(
     id='PowerLevel025Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'fractional_power_levels': [0.25]},
+    kwargs={'fractional_power_levels': [0.25, 0.0]},
 )
 
 register(
     id='PowerLevel02Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'fractional_power_levels': [0.2]},
-)
-
-register(
-    id='PowerLevel015Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'fractional_power_levels': [0.15]},
-)
-
-register(
-    id='PowerLevelsEnv-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'fractional_power_levels': [0.25, 0.1]},
+    kwargs={'fractional_power_levels': [0.2, 0.0]},
 )
 
 ###################################################################
