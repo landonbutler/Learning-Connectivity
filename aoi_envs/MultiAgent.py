@@ -558,10 +558,10 @@ class MultiAgentEnv(gym.Env):
     # Chooses a random action from the action space
     def random_controller(self, random_p=0.1):
         self.comm_model = "push"
-        attempted_trans = self.action_space.sample()
+        attempted_trans = np.random.choice(self.n_agents, size=(self.n_agents,))
         tx_prob = np.random.uniform(size=(self.n_agents,))
         return np.where(tx_prob < random_p, attempted_trans,
-                        np.arange(self.n_agents) * len(self.power_levels))
+                        np.arange(self.n_agents)) * len(self.power_levels)
 
     # Chooses a random action from the action space
     def roundrobin_controller(self):
