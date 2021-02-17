@@ -1,8 +1,5 @@
-__pycache__/*
-.vs/*
-/aoi_envs/__pycache__/MultiAgent.cpython-37.pyc
-/aoi_envs/__pycache__
-/aoi_envs/__pycache__/Stationary.cpython-37.pyc
-/aoi_envs/__pycache__/__init__.cpython-37.pyc
-.idea/*
-.idea/
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs

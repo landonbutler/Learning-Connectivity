@@ -48,7 +48,6 @@ def main():
     # for env_name in env_names:
     #     for param in params:
     #         environments.append(env_name + param + postfix)
-
     environments = ['PowerLevel02Env-v0', 'PowerLevel025Env-v0', 'PowerLevel05Env-v0', 'PowerLevel075Env-v0', 'PowerLevel10Env-v0']
     # environments = ['MobileEnv10N10-v0', 'MobileEnv10N20-v0', 'MobileEnv10N40-v0', 'MobileEnv10N60-v0', 'MobileEnv10N80-v0', 'MobileEnv10N100-v0']
     # environments = ['FlockingAOI025Env-v0',     'FlockingAOI0325Env-v0', 'FlockingAOI05Env-v0',     'FlockingAOI0625Env-v0', 'FlockingAOI075Env-v0']
@@ -75,14 +74,15 @@ def main():
         print(env_name)
         for baseline in baselines:
             means = []
-            if baseline != 'RoundRobin':
+            
+            if baseline == 'RoundRobin':
+                best_prob = 0.0
+            else:
                 for p in probabilities:
                     m, _ = eval_baseline(env, baseline, p, n_episodes=50)
                     means.append(m)
                 max_ind = np.argmax(means)
                 best_prob = probabilities[max_ind]
-            else:
-                best_prob = 0.0
 
             final_mean, final_std = eval_baseline(env, baseline, best_prob, n_episodes=100)
             best_results.append(final_mean)

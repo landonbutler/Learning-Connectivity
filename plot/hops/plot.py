@@ -29,7 +29,7 @@ for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
 plt.ylabel('Avg. Cost')
 plt.xlabel('GNN Receptive Field')
 plt.legend(loc='upper right')
-plt.ylim((25, 50))
+# plt.ylim((25, 50))
 
 # Save plot as .eps
 plt.savefig(directory + 'hops40.eps', format='eps', bbox_inches='tight')

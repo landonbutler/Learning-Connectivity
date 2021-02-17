@@ -20,4 +20,3 @@ docker run -it \
     -v ${project_volume} \
     ${image_name} \
     /bin/bash
-
