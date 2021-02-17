@@ -1,16 +1,24 @@
 import numpy as np
-from progress.bar import Bar
+import csv
 import gym
-import aoi_envs
-import glob
-import aoi_learner
-import os
+import configparser
+from os import path
 import sys
+import glob
+from functools import partial
+
+import aoi_learner
+import aoi_envs
 from aoi_learner.ppo2 import PPO2
 from stable_baselines.common.base_class import BaseRLModel
-from stable_baselines.common.vec_env import DummyVecEnv, SubprocVecEnv
+from stable_baselines.common.vec_env import DummyVecEnv
 
 N_ENVS = 25
+
+# Usage:
+# python3 test_all.py flocking_3_40_025 Flocking025Env-v0
+# or
+# python3 test_all.py cfg/flocking.cfg flocking
 
 
 def eval_model(env, model, n_episodes):
@@ -54,8 +62,6 @@ def test_one(ckpt, test_env, n_episodes=100):
 
     mean_reward = np.mean(results['reward'])
     std_reward = np.std(results['reward'])
-    # print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
-    # rewards.append(mean_reward)
     return mean_reward, std_reward
 
 
@@ -85,16 +91,55 @@ def find_best_model(all_ckpt_dir, test_env):
     mean_reward, std_reward = test_one(best_ckpt, test_env, 100)
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
 
+    return mean_reward, std_reward, best_ckpt
+
+
+def make_env(env_name):
+    env = gym.make(env_name)
+    env = gym.wrappers.FlattenDictWrapper(env, dict_keys=env.env.keys)
+    return env
+
 
 if __name__ == '__main__':
 
-    def make_env():
-        env = gym.make(sys.argv[2])
-        env = gym.wrappers.FlattenDictWrapper(env, dict_keys=env.env.keys)
-        return env
+    fname = sys.argv[1]
 
-    env = DummyVecEnv([make_env] * N_ENVS)
+    if fname[-4:] == '.cfg':
+        data_to_csv = []
+        results_csv_fname = sys.argv[2] + '_results.csv'
+        config_file = path.join(path.dirname(__file__), fname)
+        config = configparser.ConfigParser()
+        config.read(config_file)
 
-    # Specify pre-trained model checkpoint folder (containing all checkpoints).
-    all_ckpt_dir = 'models/' + sys.argv[1] + '/ckpt'
-    find_best_model(all_ckpt_dir, env)
+        section_names = config.sections() if config.sections() else [config.default_section]
+        for section_name in section_names:
+            print(section_name)
+            results = [config[section_name].get('name') + section_name]
+            env_name = config[section_name].get('test_env', config[section_name].get('env', 'StationaryEnv-v0'))
+            test_env = DummyVecEnv([partial(make_env, env_name)] * N_ENVS)
+            all_ckpt_dir = 'models/' + config[section_name].get('name') + section_name + '/ckpt'
+            print(all_ckpt_dir)
+            try:
+                mean, std, path = find_best_model(all_ckpt_dir, test_env)
+                results.extend([mean, std, path])
+                data_to_csv.append(results)
+            except IndexError:
+                print('Invalid experiment folder name!')
+                break
+
+        # writing to csv file
+        with open(results_csv_fname, 'w') as csvfile:
+            # creating a csv writer object
+            csvwriter = csv.writer(csvfile)
+
+            # writing the fields
+            csvwriter.writerow(['Section', 'Mean', 'Std', 'Path'])
+
+            # writing the data rows
+            csvwriter.writerows(data_to_csv)
+
+    else:
+        env = DummyVecEnv([partial(make_env, sys.argv[2])] * N_ENVS)
+        # Specify pre-trained model checkpoint folder (containing all checkpoints).
+        all_ckpt_dir = 'models/' + sys.argv[1] + '/ckpt'
+        find_best_model(all_ckpt_dir, env)
