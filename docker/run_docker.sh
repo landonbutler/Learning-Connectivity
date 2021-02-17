@@ -1,6 +1,6 @@
 #!/bin/bash
 use_gpu=$1
-image_name=kate_tensorflow
+image_name=gnn_tensorflow
 container_name="${USER}_tf${use_gpu}"
 project_volume=/raid0/docker-raid/${USER}/gnn:/gnn/ 
 
