@@ -17,6 +17,7 @@ N_NODE_FEAT = 7
 N_EDGE_FEAT = 1
 TIMESTEP = 0.5
 
+
 class MultiAgentEnv(gym.Env):
 
     def __init__(self, fractional_power_levels=[0.25, 0.0], eavesdropping=True, num_agents=40, initialization="Random",
@@ -27,22 +28,23 @@ class MultiAgentEnv(gym.Env):
         self.last_comms = last_comms
         self.n_agents = num_agents
         self.n_nodes = self.n_agents * self.n_agents
-        self.r_max = 5000.0
+        self.r_max = 500.0
+
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
         self.n_edges = self.n_agents * self.n_agents
 
         self.carrier_frequency_ghz = 2.4
         self.min_SINR_dbm = min_sinr  # 10-15 is consider unreliable, cited paper uses -4
-        self.gaussian_noise_dBm = -90
+        self.gaussian_noise_dBm = -50
         self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
         self.path_loss_exponent = 2
         self.aoi_reward = aoi_reward
-        self.distance_scale = self.r_max
+        self.distance_scale = self.r_max * 2
 
         self.fraction_of_rmax = fractional_power_levels  # [0.25, 0.125]
         self.power_levels = self.find_power_levels()  # method finding
 
-        self.r_max *= np.sqrt(self.n_agents / 20)
+        self.r_max *= np.sqrt(self.n_agents / 40)
 
         # initialize state matrices
         self.edge_features = np.zeros((self.n_nodes, 1))
@@ -107,22 +109,19 @@ class MultiAgentEnv(gym.Env):
         self.tx_power = None
         self.eavesdroppers = None
         self.eavesdroppers_response = None
+        self.attempted_transmissions = None
+        self.successful_transmissions = None
         self.eavesdropping = eavesdropping
+        self.initial_formation = initialization
+        # 'push' : At each time step, agent selects which agent they want to 'push' their buffer to
+        # 'tw'': An agent requests/pushes their buffer to an agent, with hopes of getting their information back
+
+        self.comm_model = comm_model
 
         if self.flocking:
             self.render_radius = 2 * self.r_max
         else:
             self.render_radius = self.r_max
-
-        # Push Model: At each time step, agent selects which agent they want to 'push' their buffer to
-        # Two-Way Model: An agent requests/pushes their buffer to an agent, with hopes of getting their information back
-        # self.comm_model = "push"  # push or tw
-        self.comm_model = comm_model  #"tw"  # push or tw
-
-        self.attempted_transmissions = None
-        self.successful_transmissions = None
-
-        self.initial_formation = initialization
 
         # Packing and unpacking information
         self.keys = ['nodes', 'edges', 'senders', 'receivers', 'globals']
@@ -267,7 +266,7 @@ class MultiAgentEnv(gym.Env):
                 self.x[:, 0:2] = np.random.uniform(-self.r_max, self.r_max, size=(self.n_agents, 2))
                 dist = self.compute_distances()
                 np.fill_diagonal(dist, 0.0)
-                dist = (dist <= self.fraction_of_rmax[0] * self.distance_scale * 2 * np.sqrt(2)).astype(np.float)
+                dist = (dist <= self.fraction_of_rmax[0] * self.distance_scale).astype(np.float)
                 alg_connect = self.algebraic_connectivity(dist)
 
         self.mst_action = None
@@ -487,7 +486,7 @@ class MultiAgentEnv(gym.Env):
 
     def instant_cost(self):  # average time_delay for a piece of information plus comm distance
         if self.flocking and not self.aoi_reward:
-            return np.sum(np.var(self.x[:, 2:4]/self.distance_scale, axis=0)) * 10000
+            return np.sum(np.var(self.x[:, 2:4], axis=0))
         elif self.is_interference or self.aoi_reward:
             return self.compute_current_aoi()
         else:
@@ -603,9 +602,6 @@ class MultiAgentEnv(gym.Env):
             self.update_receiver_buffers(i, transmission_idx[i])
 
         if self.eavesdropping:
-
-            # self.old_buffer[:] = self.network_buffer
-
             if push:
                 eavesdroppers = self.eavesdroppers
             else:
@@ -652,8 +648,7 @@ class MultiAgentEnv(gym.Env):
         # returns python list of the various power levels expressed in dBm
         power_levels = []
         for i in self.fraction_of_rmax:
-            power_levels.append(self.find_power_level_by_dist(
-                i * self.distance_scale * 2 * np.sqrt(2)))  # Should this be r_max * 2 sqrt(2) to cover diagonal?
+            power_levels.append(self.find_power_level_by_dist(i * self.distance_scale))
         return np.array(power_levels)
 
     def find_power_level_by_dist(self, distance):
