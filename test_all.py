@@ -65,7 +65,7 @@ def test_one(ckpt, test_env, n_episodes=100):
     return mean_reward, std_reward
 
 
-def find_best_model(all_ckpt_dir, test_env):
+def find_best_model(all_ckpt_dir, test_env, find_best=True):
     # Get the path of the last checkpoint.
     try:
         ckpt_list = sorted(glob.glob(str(all_ckpt_dir) + '/ckpt_*.pkl'))
@@ -77,16 +77,18 @@ def find_best_model(all_ckpt_dir, test_env):
         raise IndexError('Invalid experiment folder name!')
     rewards = []
 
-    # Test every 10th checkpoint.
-    ckpt_list = ckpt_list[-10:]
+    if find_best:
+        # Test last 10 checkpoints
+        ckpt_list = ckpt_list[-10:]
+        for ckpt in ckpt_list:
+            mean_reward, std_reward = test_one(ckpt, test_env, 50)
+            print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
+            rewards.append(mean_reward)
 
-    for ckpt in ckpt_list:
-        mean_reward, std_reward = test_one(ckpt, test_env, 50)
-        print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
-        rewards.append(mean_reward)
-
-    best_ckpt = ckpt_list[rewards.index(max(rewards))]
-    print("Best Model: " + best_ckpt)
+        best_ckpt = ckpt_list[rewards.index(max(rewards))]
+        print("Best Model: " + best_ckpt)
+    else:
+        best_ckpt = ckpt_list[-1]
 
     mean_reward, std_reward = test_one(best_ckpt, test_env, 100)
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
@@ -115,12 +117,14 @@ if __name__ == '__main__':
         for section_name in section_names:
             print(section_name)
             results = [config[section_name].get('name') + section_name]
-            env_name = config[section_name].get('test_env', config[section_name].get('env', 'StationaryEnv-v0'))
+            env_name = config[section_name].get('env', 'StationaryEnv-v0')
             test_env = DummyVecEnv([partial(make_env, env_name)] * N_ENVS)
-            all_ckpt_dir = 'models/' + config[section_name].get('name') + section_name + '/ckpt'
+            model_name = config[section_name].get('model_path', config[section_name].get('name') + section_name)
+            find_best = config[section_name].getboolean('find_best', True)
+            all_ckpt_dir = 'models/' + model_name + '/ckpt'
             print(all_ckpt_dir)
             try:
-                mean, std, path = find_best_model(all_ckpt_dir, test_env)
+                mean, std, path = find_best_model(all_ckpt_dir, test_env, find_best)
                 results.extend([mean, std, path])
                 data_to_csv.append(results)
             except IndexError:
