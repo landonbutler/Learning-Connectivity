@@ -48,10 +48,10 @@ def main(exp_name):
         environments = ['MobileEnv005-v0', 'MobileEnv01-v0', 'MobileEnv015-v0', 'MobileEnv025-v0', 'MobileEnv05-v0', 'MobileEnv075-v0', 'MobileEnv10-v0']
         filename = "mobile.csv"
     elif exp_name == 'flocking_aoi':
-        environments = ['FlockingAOI025Env-v0',     'FlockingAOI0325Env-v0', 'FlockingAOI05Env-v0',     'FlockingAOI0625Env-v0', 'FlockingAOI075Env-v0']
+        environments = ['FlockingAOI025Env-v0', 'FlockingAOI0325Env-v0', 'FlockingAOI05Env-v0', 'FlockingAOI0625Env-v0', 'FlockingAOI075Env-v0']
         filename = "flocking_aoi.csv"
     elif exp_name == 'flocking':
-        environments = ['Flocking025Env-v0',     'Flocking0325Env-v0', 'Flocking05Env-v0',     'Flocking0625Env-v0', 'Flocking075Env-v0']
+        environments = ['Flocking025Env-v0', 'Flocking0325Env-v0', 'Flocking05Env-v0', 'Flocking0625Env-v0', 'Flocking075Env-v0']
         filename = "flocking.csv"
     else:
         environments = ['StationaryEnv-v0']
@@ -80,7 +80,7 @@ def main(exp_name):
                 best_prob = 0.0
             else:
                 for p in probabilities:
-                    m, _ = eval_baseline(env, baseline, p, n_episodes=10)
+                    m, _ = eval_baseline(env, baseline, p, n_episodes=50)
                     means.append(m)
                     print(m)
                 max_ind = np.argmax(means)

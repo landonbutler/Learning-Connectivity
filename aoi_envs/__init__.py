@@ -40,6 +40,13 @@ register(
     kwargs={'fractional_power_levels': [0.25, 0.0]},
 )
 
+register(
+    id='PowerLevel02Env-v0',
+    entry_point='aoi_envs:MultiAgentEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'fractional_power_levels': [0.2, 0.0]},
+)
+
 ###################################################################
 register(
     id='Stationary10Env-v0',
