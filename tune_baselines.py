@@ -48,11 +48,17 @@ def main(exp_name):
         environments = ['MobileEnv005-v0', 'MobileEnv01-v0', 'MobileEnv015-v0', 'MobileEnv025-v0', 'MobileEnv05-v0', 'MobileEnv075-v0', 'MobileEnv10-v0']
         filename = "mobile.csv"
     elif exp_name == 'flocking_aoi':
-        environments = ['FlockingAOI025Env-v0', 'FlockingAOI0325Env-v0', 'FlockingAOI05Env-v0', 'FlockingAOI0625Env-v0', 'FlockingAOI075Env-v0']
+        environments = ['FlockingAOI015Env-v0', 'FlockingAOI025Env-v0', 'FlockingAOI0325Env-v0', 'FlockingAOI05Env-v0', 'FlockingAOI0625Env-v0', 'FlockingAOI075Env-v0']
         filename = "flocking_aoi.csv"
     elif exp_name == 'flocking':
-        environments = ['Flocking025Env-v0', 'Flocking0325Env-v0', 'Flocking05Env-v0', 'Flocking0625Env-v0', 'Flocking075Env-v0']
+        environments = ['Flocking015Env-v0', 'Flocking025Env-v0', 'Flocking0325Env-v0', 'Flocking05Env-v0', 'Flocking0625Env-v0', 'Flocking075Env-v0']
         filename = "flocking.csv"
+    elif exp_name == 'mobile_n':
+        environments = ['MobileEnv10N10-v0', 'MobileEnv10N20-v0', 'MobileEnv10N40-v0', 'MobileEnv10N60-v0', 'MobileEnv10N80-v0', 'MobileEnv10N100-v0']
+        filename = 'mobile_n.csv'
+    elif exp_name == 'n':
+        environments = ['Stationary10Env-v0', 'Stationary20Env-v0', 'Stationary40Env-v0', 'Stationary60Env-v0', 'Stationary80Env-v0', 'Stationary100Env-v0']
+        filename = 'n.csv'
     else:
         environments = ['StationaryEnv-v0']
         filename = "stationary.csv"
