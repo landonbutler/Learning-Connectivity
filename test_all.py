@@ -79,7 +79,7 @@ def find_best_model(all_ckpt_dir, test_env, find_best=True):
 
     if find_best:
         # Test last 10 checkpoints
-        ckpt_list = ckpt_list[-30::3]
+        ckpt_list = ckpt_list[0::3]
         for ckpt in ckpt_list:
             mean_reward, std_reward = test_one(ckpt, test_env, 50)
             print('reward,          mean = {:.1f}, std = {:.1f}'.format(mean_reward, std_reward))
