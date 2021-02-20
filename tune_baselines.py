@@ -45,7 +45,7 @@ def main(exp_name):
         environments = ['PowerLevel02Env-v0', 'PowerLevel025Env-v0', 'PowerLevel05Env-v0', 'PowerLevel075Env-v0', 'PowerLevel10Env-v0']
         filename = "power.csv"
     elif exp_name == 'mobile':
-        environments = ['MobileEnv005-v0', 'MobileEnv01-v0', 'MobileEnv015-v0', 'MobileEnv025-v0', 'MobileEnv05-v0', 'MobileEnv075-v0', 'MobileEnv10-v0']
+        environments = ['MobileEnv005-v0', 'MobileEnv01-v0', 'MobileEnv015-v0', 'MobileEnv025-v0', 'MobileEnv05-v0']
         filename = "mobile.csv"
     elif exp_name == 'flocking_aoi':
         environments = ['FlockingAOI015Env-v0', 'FlockingAOI025Env-v0', 'FlockingAOI0325Env-v0', 'FlockingAOI05Env-v0', 'FlockingAOI0625Env-v0', 'FlockingAOI075Env-v0']
