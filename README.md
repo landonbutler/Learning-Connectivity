@@ -1,5 +1,7 @@
 # Learning Connectivity for Data Distribution in Robot Teams
 
+![](visuals/MST-Visual.JPG)
+
 ## Set up
 
 To set this project up to work with Docker, see the `docker/` directory for the Dockerfile and a bash script to start the container.
