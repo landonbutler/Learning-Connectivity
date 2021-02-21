@@ -9,7 +9,6 @@ for reward in ['aoi', 'var']:
     fnames = ['test_aoitrain_nl', 'test_vartrain_nl', '_baseline_random', '_baseline_mst', '_baseline_rr']
     fnames = [directory + reward + fname + '.csv' for fname in fnames]
     n_trials = 1000
-    gnn_n_trials = 100
 
     # Curve appearance
     colors = ['tab:orange', 'tab:red', 'tab:pink', 'tab:green', 'tab:purple']
@@ -23,11 +22,7 @@ for reward in ['aoi', 'var']:
         # import os
         # filename = os.path.join(R'C:\Users\Landon\Source\Repos\aoi_multi_agent_swarm\plot\flocking', fname)
         data = np.loadtxt(fname, skiprows=1)
-        if "GNN" in fname:
-            trials = gnn_n_trials
-        else:
-            trials = n_trials
-        plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(trials), label=label, color=color, ls=ls)
+        plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
 
     if reward == 'aoi':
         plt.ylabel('Avg. Age of Info. Cost')
