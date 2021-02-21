@@ -7,9 +7,11 @@ class MobileEnv(MultiAgentEnv):
                  random_acceleration=True, aoi_reward=True, flocking_position_control=False, num_agents=40):
         super().__init__(eavesdropping=True, fractional_power_levels=[0.25, 0.0], initialization=initialization,
                          aoi_reward=aoi_reward, num_agents=num_agents)
-        self.max_v = agent_velocity * self.distance_scale  # for strictly mobile agents, this is the constant velocity
-        self.ts_length = 0.01
-        self.gain = 50.0
+
+        self.ts_length = 0.1
+        self.max_velocity = agent_velocity * self.distance_scale / self.ts_length / self.episode_length
+        self.max_acceleration = 10.0
+        self.gain = 1.0
 
         self.recompute_solution = True
         self.mobile_agents = True
@@ -23,14 +25,14 @@ class MobileEnv(MultiAgentEnv):
         super().reset()
 
         if self.random_acceleration or (self.flocking and not self.biased_velocities):
-            self.x[:, 2:4] = np.random.uniform(-self.max_v, self.max_v, size=(self.n_agents, 2))
+            self.x[:, 2:4] = np.random.uniform(-self.max_velocity, self.max_velocity, size=(self.n_agents, 2))
         elif self.flocking and self.biased_velocities:
-            self.x[:, 2:4] = np.random.uniform(0.5 * -self.max_v, 0.5 * self.max_v, size=(self.n_agents, 2))
-            self.x[:, 2:4] = self.x[:, 2:4] + np.random.uniform(0.5 * -self.max_v, 0.5 * self.max_v, size=(1, 2))
+            self.x[:, 2:4] = np.random.uniform(0.5 * -self.max_velocity, 0.5 * self.max_velocity, size=(self.n_agents, 2))
+            self.x[:, 2:4] = self.x[:, 2:4] + np.random.uniform(0.5 * -self.max_velocity, 0.5 * self.max_velocity, size=(1, 2))
         else:
             angle = np.pi * np.random.uniform(0, 2, size=(self.n_agents,))
-            self.x[:, 2] = self.max_v * np.cos(angle)
-            self.x[:, 3] = self.max_v * np.sin(angle)
+            self.x[:, 2] = self.max_velocity * np.cos(angle)
+            self.x[:, 3] = self.max_velocity * np.sin(angle)
 
         self.network_buffer[:, :, 4:6] = np.where(self.diag,
                                                   self.x[:, 2:4].reshape(self.n_agents, 1, 2),
@@ -66,9 +68,12 @@ class MobileEnv(MultiAgentEnv):
                     acceleration += np.nansum(grad, axis=1) * steady_state_scale
 
             else:
-                acceleration = np.random.uniform(-self.max_v, self.max_v, size=(self.n_agents, 2))
+                # acceleration = np.random.uniform(-self.max_acceleration, self.max_acceleration, size=(self.n_agents, 2))
+                acceleration = np.random.normal(0., self.max_acceleration / 3.0, size=(self.n_agents, 2))
+
+            acceleration = np.clip(acceleration, -self.max_acceleration, self.max_acceleration)
             self.x[:, 2:4] += self.gain * self.ts_length * acceleration
-            self.x[:, 2:4] = np.clip(self.x[:, 2:4], -self.max_v, self.max_v)
+            self.x[:, 2:4] = np.clip(self.x[:, 2:4], -self.max_velocity, self.max_velocity)
 
         if self.flocking:
             self.x[:, 0:2] = new_pos

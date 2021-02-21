@@ -39,31 +39,34 @@ def eval_baseline(env, baseline, probability, n_episodes=20):
     return mean_reward, std_reward
 
 
-def main():
-    # params = ['N10', '', 'N40', 'N60', 'N80', 'N100']
-    # env_names = ['MobileEnv10']
-    # postfix = '-v0'
-    #
-    # environments = []
-    # for env_name in env_names:
-    #     for param in params:
-    #         environments.append(env_name + param + postfix)
+def main(exp_name):
 
-    # environments = ['PowerLevel02Env-v0', 'PowerLevel025Env-v0', 'PowerLevel05Env-v0', 'PowerLevel075Env-v0', 'PowerLevel10Env-v0']
-    # environments = ['MobileEnv10N10-v0', 'MobileEnv10N20-v0', 'MobileEnv10N40-v0', 'MobileEnv10N60-v0', 'MobileEnv10N80-v0', 'MobileEnv10N100-v0']
-    # environments = ['FlockingAOI025Env-v0',     'FlockingAOI0325Env-v0', 'FlockingAOI05Env-v0',     'FlockingAOI0625Env-v0', 'FlockingAOI075Env-v0']
-    # environments = ['Flocking025Env-v0',     'Flocking0325Env-v0', 'Flocking05Env-v0',     'Flocking0625Env-v0', 'Flocking075Env-v0']
-    # environments = ['MobileEnv015-v0', 'MobileEnv025-v0', 'MobileEnv05-v0', 'MobileEnv075-v0', 'MobileEnv10-v0', 'MobileEnv125-v0', 'MobileEnv15-v0']
-
-    environments = ['Stationary10Env-v0', 'Stationary20Env-v0', 'Stationary40Env-v0', 'Stationary60Env-v0','Stationary80Env-v0', 'Stationary100Env-v0']
-    environments = ['Stationary10Env-v0', 'Stationary40Env-v0', 'Stationary60Env-v0','Stationary80Env-v0', 'Stationary100Env-v0']
-
-    filename = "tuned_n_stationary.csv"
+    if exp_name == 'power':
+        environments = ['PowerLevel02Env-v0', 'PowerLevel025Env-v0', 'PowerLevel05Env-v0', 'PowerLevel075Env-v0', 'PowerLevel10Env-v0']
+        filename = "power.csv"
+    elif exp_name == 'mobile':
+        environments = ['MobileEnv005-v0', 'MobileEnv01-v0', 'MobileEnv015-v0', 'MobileEnv025-v0', 'MobileEnv05-v0']
+        filename = "mobile.csv"
+    elif exp_name == 'flocking_aoi':
+        environments = ['FlockingAOI015Env-v0', 'FlockingAOI025Env-v0', 'FlockingAOI0325Env-v0', 'FlockingAOI05Env-v0', 'FlockingAOI0625Env-v0', 'FlockingAOI075Env-v0']
+        filename = "flocking_aoi.csv"
+    elif exp_name == 'flocking':
+        environments = ['Flocking015Env-v0', 'Flocking025Env-v0', 'Flocking0325Env-v0', 'Flocking05Env-v0', 'Flocking0625Env-v0', 'Flocking075Env-v0']
+        filename = "flocking.csv"
+    elif exp_name == 'mobile_n':
+        environments = ['MobileEnv10N10-v0', 'MobileEnv10N20-v0', 'MobileEnv10N40-v0', 'MobileEnv10N60-v0', 'MobileEnv10N80-v0', 'MobileEnv10N100-v0']
+        filename = 'mobile_n.csv'
+    elif exp_name == 'n':
+        environments = ['Stationary10Env-v0', 'Stationary20Env-v0', 'Stationary40Env-v0', 'Stationary60Env-v0', 'Stationary80Env-v0', 'Stationary100Env-v0']
+        filename = 'n.csv'
+    else:
+        environments = ['StationaryEnv-v0']
+        filename = "stationary.csv"
 
     baselines = ['Random', 'MST', 'RoundRobin']
 
-    probabilities = [0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3]  #, 0.12, 0.15, 0.18, 0.2, 0.22, 0.25, 0.5]
-    # probabilities = [0.08, 0.1, 0.12, 0.15]
+    # probabilities = [0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3]  #, 0.12, 0.15, 0.18, 0.2, 0.22, 0.25, 0.5]
+    probabilities = [0.04, 0.06, 0.08, 0.1, 0.12, 0.15]  #, 0.18, 0.2, 0.22, 0.25, 0.5]
     fields = ['EnvName']
     for i in baselines:
         fields.append(i + " Mean")
@@ -85,6 +88,7 @@ def main():
                 for p in probabilities:
                     m, _ = eval_baseline(env, baseline, p, n_episodes=50)
                     means.append(m)
+                    print(m)
                 max_ind = np.argmax(means)
                 best_prob = probabilities[max_ind]
 
@@ -108,4 +112,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1])

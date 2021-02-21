@@ -8,58 +8,6 @@ register(
     id='StationaryEnv-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'fractional_power_levels': [0.25, 0.0]},
-)
-
-register(
-    id='Stationary2Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'fractional_power_levels': [0.25], 'num_agents': 40},
-)
-
-###################################################################
-
-register(
-    id='StationarySINR05Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'min_sinr': 0.5},
-)
-
-register(
-    id='StationarySINR10Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'min_sinr': 1.0},
-)
-
-register(
-    id='StationarySINR20Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'min_sinr': 2.0},
-)
-
-register(
-    id='StationarySINR50Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'min_sinr': 5.0},
-)
-
-register(
-    id='StationarySINR80Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'min_sinr': 8.0},
-)
-
-register(
-    id='StationarySINR120Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'min_sinr': [12.0]},
 )
 
 ###################################################################
@@ -157,13 +105,6 @@ register(
     kwargs={'num_agents': 100},
 )
 
-register(
-    id='Stationary150Env-v0',
-    entry_point='aoi_envs:MultiAgentEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'num_agents': 150},
-)
-
 ###################################################################
 
 register(
@@ -177,6 +118,13 @@ register(
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'agent_velocity': 0.0},
+)
+
+register(
+    id='MobileEnv005-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 0.05},
 )
 
 register(
@@ -208,33 +156,19 @@ register(
     kwargs={'agent_velocity': 0.5},
 )
 
-register(
-    id='MobileEnv075-v0',
-    entry_point='aoi_envs:MobileEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 0.75},
-)
-
-register(
-    id='MobileEnv10-v0',
-    entry_point='aoi_envs:MobileEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 1.0},
-)
-
-register(
-    id='MobileEnv125-v0',
-    entry_point='aoi_envs:MobileEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 1.25},
-)
-
-register(
-    id='MobileEnv15-v0',
-    entry_point='aoi_envs:MobileEnv',
-    max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 1.5},
-)
+# register(
+#     id='MobileEnv075-v0',
+#     entry_point='aoi_envs:MobileEnv',
+#     max_episode_steps=MAX_EPISODE_STEPS,
+#     kwargs={'agent_velocity': 0.75},
+# )
+#
+# register(
+#     id='MobileEnv10-v0',
+#     entry_point='aoi_envs:MobileEnv',
+#     max_episode_steps=MAX_EPISODE_STEPS,
+#     kwargs={'agent_velocity': 1.0},
+# )
 
 ###################################################################
 
@@ -242,42 +176,42 @@ register(
     id='MobileEnv10N10-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 1.0, 'num_agents': 10},
+    kwargs={'agent_velocity': 0.15, 'num_agents': 10},
 )
 
 register(
     id='MobileEnv10N20-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 1.0, 'num_agents': 20},
+    kwargs={'agent_velocity': 0.15, 'num_agents': 20},
 )
 
 register(
     id='MobileEnv10N40-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 1.0, 'num_agents': 40},
+    kwargs={'agent_velocity': 0.15, 'num_agents': 40},
 )
 
 register(
     id='MobileEnv10N60-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 1.0, 'num_agents': 60},
+    kwargs={'agent_velocity': 0.15, 'num_agents': 60},
 )
 
 register(
     id='MobileEnv10N80-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 1.0, 'num_agents': 80},
+    kwargs={'agent_velocity': 0.15, 'num_agents': 80},
 )
 
 register(
     id='MobileEnv10N100-v0',
     entry_point='aoi_envs:MobileEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
-    kwargs={'agent_velocity': 1.0, 'num_agents': 100},
+    kwargs={'agent_velocity': 0.15, 'num_agents': 100},
 )
 
 ###################################################################
@@ -297,6 +231,12 @@ register(
 )
 
 ###################################################################
+register(
+    id='Flocking015Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 0.15, 'flocking': True, 'aoi_reward': False},
+)
 
 register(
     id='Flocking025Env-v0',
@@ -333,7 +273,19 @@ register(
     kwargs={'agent_velocity': 0.75, 'flocking': True, 'aoi_reward': False},
 )
 
-###################################################################
+register(
+    id='Flocking10Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.0, 'flocking': True, 'aoi_reward': False},
+)
+
+register(
+    id='FlockingAOI015Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 0.15, 'flocking': True},
+)
 
 register(
     id='FlockingAOI025Env-v0',
@@ -370,3 +322,11 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'agent_velocity': 0.75, 'flocking': True},
 )
+
+register(
+    id='FlockingAOI10Env-v0',
+    entry_point='aoi_envs:MobileEnv',
+    max_episode_steps=MAX_EPISODE_STEPS,
+    kwargs={'agent_velocity': 1.0, 'flocking': True},
+)
+
