@@ -6,7 +6,6 @@ class CommunicationPolicy(ActorCriticPolicy):
     def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse=False, **kwargs):
         super(CommunicationPolicy, self).__init__(sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse=reuse, scale=True)
 
-        # TO DO - EDIT BELOW
         with tf.variable_scope("model", reuse=reuse):
             activ = tf.nn.relu
 
@@ -31,10 +30,6 @@ class CommunicationPolicy(ActorCriticPolicy):
         self._setup_init()
 
     def step(self, obs, state=None, mask=None, deterministic=False):
-
-        # process the buffer here before passing in
-
-
         if deterministic:
             action, value, neglogp = self.sess.run([self.deterministic_action, self.value_flat, self.neglogp],
                                                    {self.obs_ph: obs})

@@ -11,7 +11,7 @@ import colorsys
 
 font = {'family': 'sans-serif',
         'weight': 'bold',
-        'size': 11}
+        'size': 9}
 
 N_NODE_FEAT = 7
 N_EDGE_FEAT = 1
@@ -21,28 +21,29 @@ TIMESTEP = 0.5
 class MultiAgentEnv(gym.Env):
 
     def __init__(self, fractional_power_levels=[0.25, 0.0], eavesdropping=True, num_agents=40, initialization="Random",
-                 aoi_reward=True, episode_length=500.0, comm_model="tw", min_sinr=1.0, last_comms=True):
+                 aoi_reward=True, episode_length=50.0, comm_model="tw", min_sinr=1.0, last_comms=True):
         super(MultiAgentEnv, self).__init__()
 
         # Problem parameters
         self.last_comms = last_comms
         self.n_agents = num_agents
         self.n_nodes = self.n_agents * self.n_agents
-        self.r_max = 500.0
 
+        self.r_max = 500.0
         self.n_features = N_NODE_FEAT  # (TransTime, Parent Agent, PosX, PosY, VelX, VelY)
         self.n_edges = self.n_agents * self.n_agents
 
         self.carrier_frequency_ghz = 2.4
         self.min_SINR_dbm = min_sinr  # 10-15 is consider unreliable, cited paper uses -4
         self.gaussian_noise_dBm = -50
+
         self.gaussian_noise_mW = 10 ** (self.gaussian_noise_dBm / 10)
         self.path_loss_exponent = 2
         self.aoi_reward = aoi_reward
         self.distance_scale = self.r_max * 2
 
-        self.fraction_of_rmax = fractional_power_levels  # [0.25, 0.125]
-        self.power_levels = self.find_power_levels()  # method finding
+        self.fraction_of_rmax = fractional_power_levels
+        self.power_levels = self.find_power_levels()
 
         self.r_max *= np.sqrt(self.n_agents / 40)
 
@@ -135,13 +136,13 @@ class MultiAgentEnv(gym.Env):
     def step(self, attempted_transmissions):
         """
         Apply agent actions to update environment.
-        In the future, we could create a nxn continuous action space of transmit powers, and keep max k transmits.
         :param attempted_transmissions: n-vector of index of who to communicate with
         :return: Environment observations as a dict representing the graph.
         """
         assert (self.comm_model is "push" or self.comm_model is "tw")
 
         self.timestep = self.timestep + TIMESTEP
+
         # my information is updated
         self.network_buffer[:, :, 0] += np.eye(self.n_agents) * TIMESTEP
 
@@ -204,7 +205,7 @@ class MultiAgentEnv(gym.Env):
             self.relative_buffer[:, :, 4:6] -= self.x[:, 2:4].reshape(self.n_agents, 1, 2)
             self.relative_buffer[:, :, 4:6] /= self.distance_scale
 
-        # align to the observation space and then pass that input out MAKE SURE THESE ARE INCREMENTED
+        # align to the observation space and then pass that input out
         return self.map_to_observation_space(self.relative_buffer)
 
     def map_to_observation_space(self, network_buffer):
@@ -217,7 +218,6 @@ class MultiAgentEnv(gym.Env):
                            -1)
         receivers = np.where(no_edge, np.reshape(np.arange(self.n_nodes), (self.n_agents, self.n_agents)), -1)
 
-        # TODO add distances between nodes as edge features
         step = np.reshape([self.timestep], (1, 1))
         senders = np.reshape(senders.flatten(), (-1, 1))
         receivers = np.reshape(receivers.flatten(), (-1, 1))
@@ -341,7 +341,7 @@ class MultiAgentEnv(gym.Env):
 
                 self.agent_markers1, = self.ax1.plot([], [], marker='o', color='royalblue', linestyle = '')  # Returns a tuple of line objects, thus the comma
                 self.agent0_marker1, = self.ax1.plot([], [], 'go')
-                self.agent_markers1_eaves, = self.ax1.plot([], [], marker='o', color='lightsteelblue', linestyle = '')  # Returns a tuple of line objects, thus the comma
+                self.agent_markers1_eaves, = self.ax1.plot([], [], marker='o', color='lightsteelblue', linestyle = '')
 
                 self.agent_markers2, = self.ax2.plot([], [], marker='o', color='royalblue', linestyle = '')
                 self.agent0_marker2, = self.ax2.plot([], [], 'go')
@@ -416,6 +416,7 @@ class MultiAgentEnv(gym.Env):
                     self.paths[i].set_ydata([])
 
                 if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
+
                     # agent chose to attempt transmission
                     transmit_distances.append(np.linalg.norm(self.x[i, 0:2] - self.x[j, 0:2]))
                     # agent chooses to communicate with j
@@ -452,18 +453,20 @@ class MultiAgentEnv(gym.Env):
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             if save_plots:
-                plt.savefig('visuals/bufferTrees/ts' + str(int(self.timestep)) + '.png')
+                plt.savefig('visuals/ts' + str(int(self.timestep)) + '.png')
 
     def get_successful_communication_percent(self):
         count_succ_comm = 0
         count_att_comm = 0
         for i in range(self.n_agents):
             if i != self.attempted_transmissions[i] and self.attempted_transmissions[i] != -1:
+
                 # agent chose to attempt transmission
                 count_att_comm += 1
                 # agent chooses to communicate with j
                 j = self.attempted_transmissions[i]
                 if len(self.successful_transmissions[i]) > 0 and j == self.successful_transmissions[i][0]:
+
                     # communication linkage is successful - black
                     count_succ_comm += 1
         if count_att_comm > 0:
@@ -490,7 +493,7 @@ class MultiAgentEnv(gym.Env):
         elif self.is_interference or self.aoi_reward:
             return self.compute_current_aoi()
         else:
-            return self.compute_current_aoi() + self.avg_transmit_distance * 0.05
+            return self.compute_current_aoi()
 
     def interference(self, attempted_transmissions, tx_power):
         # converts attempted transmissions list to an adjacency matrix
@@ -532,9 +535,7 @@ class MultiAgentEnv(gym.Env):
 
         # only keep those that did try to communicate
         successful_tx_power = np.where(successful_tx, tx_adj_mat_power_db, np.NINF)
-        # successful_tx_power = np.nan_to_num(successful_tx_power, nan=0.0, neginf=0.0)
 
-        # TODO check this
         if not self.eavesdropping:
             eavesdroppers = None
         else:
@@ -663,16 +664,6 @@ class MultiAgentEnv(gym.Env):
         return 10 * np.log10(channel_gain * gamma * self.gaussian_noise_mW)
 
     def lighten_color(self, color, amount=0.5):
-        """
-        Lightens the given color by multiplying (1-luminosity) by the given amount.
-        Input can be matplotlib color string, hex string, or RGB tuple.
-
-        Examples:
-        >> lighten_color('g', 0.3)
-        >> lighten_color('#F034A3', 0.6)
-        >> lighten_color((.3,.55,.1), 0.5)
-        """
-
         try:
             c = mc.cnames[color]
         except:

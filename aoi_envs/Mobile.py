@@ -1,9 +1,6 @@
 from aoi_envs.MultiAgent import MultiAgentEnv
 import numpy as np
 
-N_NODE_FEAT = 6
-
-
 class MobileEnv(MultiAgentEnv):
 
     def __init__(self, agent_velocity=1.0, initialization='Random', biased_velocities=False, flocking=False,
@@ -52,12 +49,10 @@ class MobileEnv(MultiAgentEnv):
         return grad
 
     def move_agents(self):
-
         new_pos = self.x[:, 0:2] + self.x[:, 2:4] * self.ts_length
 
         if self.flocking or self.random_acceleration:
             if self.flocking:
-
                 known_velocities = np.copy(self.network_buffer[:, :, 4:6])
                 known_velocities[known_velocities == 0] = np.nan
                 known_velocities -= (self.x[:, 2:4])[:, np.newaxis, :]

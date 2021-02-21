@@ -48,13 +48,13 @@ register(
 )
 
 ###################################################################
+
 register(
     id='Stationary10Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'num_agents': 10},
 )
-
 
 register(
     id='Stationary20Env-v0',
@@ -280,9 +280,6 @@ register(
     kwargs={'agent_velocity': 1.0, 'flocking': True, 'aoi_reward': False},
 )
 
-
-###################################################################
-
 register(
     id='FlockingAOI015Env-v0',
     entry_point='aoi_envs:MobileEnv',
@@ -332,3 +329,4 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'agent_velocity': 1.0, 'flocking': True},
 )
+
