@@ -11,7 +11,7 @@ import colorsys
 
 font = {'family': 'sans-serif',
         'weight': 'bold',
-        'size': 11}
+        'size': 9}
 
 N_NODE_FEAT = 7
 N_EDGE_FEAT = 1
@@ -20,7 +20,7 @@ TIMESTEP = 0.5
 class MultiAgentEnv(gym.Env):
 
     def __init__(self, fractional_power_levels=[0.25, 0.0], eavesdropping=True, num_agents=40, initialization="Random",
-                 aoi_reward=True, episode_length=500.0, comm_model="tw", min_sinr=1.0, last_comms=True):
+                 aoi_reward=True, episode_length=50.0, comm_model="tw", min_sinr=1.0, last_comms=True):
         super(MultiAgentEnv, self).__init__()
 
         # Problem parameters
@@ -452,7 +452,7 @@ class MultiAgentEnv(gym.Env):
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             if save_plots:
-                plt.savefig('visuals/bufferTrees/ts' + str(int(self.timestep)) + '.png')
+                plt.savefig('visuals/ts' + str(int(self.timestep)) + '.png')
 
     def get_successful_communication_percent(self):
         count_succ_comm = 0

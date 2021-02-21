@@ -16,7 +16,6 @@ parser.add_argument('-v', '--visualize', dest='visualize', action='store_true')
 parser.add_argument('-g', '--greedy', dest='greedy', action='store_true')
 parser.add_argument('-m', '--mst', dest='mst', action='store_true')
 parser.add_argument('-r', '--random', dest='random', action='store_true')
-parser.add_argument('-b', '--roundrobin', dest='roundrobin', action='store_true')
 parser.add_argument('-l', '--learner', dest='learner', action='store_true')
 
 parser.add_argument('-gif', '--gif', dest='gif', action='store_true')
@@ -24,7 +23,7 @@ parser.add_argument('-e', '--env', type=str)
 parser.add_argument('-p', '--path', dest='path', type=str)
 parser.add_argument('-n', '--n_episodes', dest='n_episodes', type=int)
 
-parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False, roundrobin=False,
+parser.set_defaults(random=False, mst=False, greedy=False, visualize=False, learner=False,
                     gif=False, path='', env='StationaryEnv-v0', n_episodes=10)
 args = parser.parse_args()
 
@@ -48,8 +47,8 @@ def eval_model(env, model, N, render=False):
             timestep = 1
             # Run one game.
             controller = ""
-            # gif_fp = "visuals/models/"
-            gif_fp = 'visuals/bufferTrees/'
+
+            gif_fp = 'visuals/'
             while not done:
                 if args.learner or model:
                     action, state = model.predict(obs, state=state, deterministic=False)
@@ -63,16 +62,13 @@ def eval_model(env, model, N, render=False):
                 elif args.random:
                     action = env.env.env.random_controller()
                     controller = "Random"
-                elif args.roundrobin:
+                else:
                     action = env.env.env.roundrobin_controller()
                     controller = "RoundRobin"
-                else:
-                    action = env.env.env.neopolitan_controller()
-                    controller = "Neopolitan"
 
                 state = None
                 obs, rewards, done, info = env.step(action)
-                # env.render(mode=render_mode)
+
                 if render:
                     env.env.env.render(controller=controller, save_plots=args.gif)
                     time.sleep(0.1)
@@ -128,8 +124,12 @@ if __name__ == '__main__':
     env = make_env()
 
     if args.visualize:
-        print('\nTest over 10  episodes live visualization...')
-        eval_model(env, model, 10, render=True)
+        if args.gif:
+            print('\nTest over 1  episode live visualization...')
+            eval_model(env, model, 1, render=True)
+        else:
+            print('\nTest over 10  episodes live visualization...')
+            eval_model(env, model, 10, render=True)
 
     print('\nTest over ' + str(args.n_episodes) + ' episodes...')
     results = eval_model(env, model, args.n_episodes)
