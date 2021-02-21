@@ -1,7 +1,8 @@
 # Learning Connectivity for Data Distribution in Robot Teams
-
-![](visuals/MST-Visual.JPG)
-
+<p align="center">
+<img src="https://github.com/landonbutler/Learning-Connectivity/blob/main/visuals/MST-Visual.gif" width="700">
+</p>
+  
 ## Set up
 
 To set this project up to work with Docker, see the `docker/` directory for the Dockerfile and a bash script to start the container.
