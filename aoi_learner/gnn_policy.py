@@ -18,7 +18,6 @@ class GNNPolicy(ActorCriticPolicy):
     :param n_batch: (int) The number of batch to run (n_envs * n_steps)
     :param reuse: (bool) If the policy is reusable or not
     """
-    # TODO fix the parameter list in the comment to match the actual params
 
     def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch, reuse=False,
                  num_processing_steps=None, latent_size=None, n_layers=None, reducer=None, n_gnn_layers=None,
@@ -83,8 +82,6 @@ class GNNPolicy(ActorCriticPolicy):
                                                        node_output_size=latent_size,
                                                        name="policy_model" + str(i))
                     agent_graph = self.policy_model_i(agent_graph)
-
-                # TODO for learning the power levels, set node_output_size = num. of power levels.
 
                 # The readout GNN layer for the policy
                 self.policy_model = model_module(num_processing_steps=num_processing_steps,

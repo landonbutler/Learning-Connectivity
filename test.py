@@ -135,5 +135,3 @@ if __name__ == '__main__':
     results = eval_model(env, model, args.n_episodes)
     print('reward,          mean = {:.1f}, std = {:.1f}'.format(np.mean(results['reward']), np.std(results['reward'])))
     print('')
-
-

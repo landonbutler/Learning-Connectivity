@@ -18,8 +18,8 @@ register(
     kwargs={'fractional_power_levels': [0.25], 'num_agents': 40},
 )
 
-
 ###################################################################
+
 register(
     id='StationarySINR05Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
@@ -100,13 +100,13 @@ register(
 )
 
 ###################################################################
+
 register(
     id='Stationary10Env-v0',
     entry_point='aoi_envs:MultiAgentEnv',
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'num_agents': 10},
 )
-
 
 register(
     id='Stationary20Env-v0',
@@ -333,27 +333,6 @@ register(
     kwargs={'agent_velocity': 0.75, 'flocking': True, 'aoi_reward': False},
 )
 
-# register(
-#     id='Flocking10Env-v0',
-#     entry_point='aoi_envs:MobileEnv',
-#     max_episode_steps=MAX_EPISODE_STEPS,
-#     kwargs={'agent_velocity': 1.0, 'flocking': True, 'aoi_reward': False},
-# )
-#
-# register(
-#     id='Flocking125Env-v0',
-#     entry_point='aoi_envs:MobileEnv',
-#     max_episode_steps=MAX_EPISODE_STEPS,
-#     kwargs={'agent_velocity': 1.25, 'flocking': True, 'aoi_reward': False},
-# )
-#
-# register(
-#     id='Flocking15Env-v0',
-#     entry_point='aoi_envs:MobileEnv',
-#     max_episode_steps=MAX_EPISODE_STEPS,
-#     kwargs={'agent_velocity': 1.5, 'flocking': True, 'aoi_reward': False},
-# )
-
 ###################################################################
 
 register(
@@ -391,24 +370,3 @@ register(
     max_episode_steps=MAX_EPISODE_STEPS,
     kwargs={'agent_velocity': 0.75, 'flocking': True},
 )
-
-# register(
-#     id='FlockingAOI10Env-v0',
-#     entry_point='aoi_envs:MobileEnv',
-#     max_episode_steps=MAX_EPISODE_STEPS,
-#     kwargs={'agent_velocity': 1.0, 'flocking': True},
-# )
-#
-# register(
-#     id='FlockingAOI125Env-v0',
-#     entry_point='aoi_envs:MobileEnv',
-#     max_episode_steps=MAX_EPISODE_STEPS,
-#     kwargs={'agent_velocity': 1.25, 'flocking': True},
-# )
-#
-# register(
-#     id='FlockingAOI15Env-v0',
-#     entry_point='aoi_envs:MobileEnv',
-#     max_episode_steps=MAX_EPISODE_STEPS,
-#     kwargs={'agent_velocity': 1.5, 'flocking': True},
-# )
