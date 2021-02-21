@@ -4,7 +4,7 @@
 
 To set this project up to work with Docker, see the `docker/` directory for the Dockerfile and a bash script to start the container.
 
-## Dependencies:
+## Dependencies
 * graph_nets
 ```shell
 pip install graph_nets "tensorflow>=1.15,<2" "dm-sonnet<2" "tensorflow_probability<0.9"
@@ -15,7 +15,7 @@ pip install graph_nets "tensorflow>=1.15,<2" "dm-sonnet<2" "tensorflow_probabili
 
 * stable_baselines==2.9.0
 
-## Model Training:
+## Model Training
 
 ```python3 train.py -p cfg/nl.cfg```
 where the first argument is the path of the experiment config file.
