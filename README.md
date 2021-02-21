@@ -31,6 +31,7 @@ where the first argument is the config file that was used for training and the s
 ## Visualization
 
 ```python3 test.py -p <path to model> -e StationaryEnv-v0 -v```
+add -gif to save visualization to a GIF
 
 ## Configuration files
 The following configuration files were used to train the models for the paper:
