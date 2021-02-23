@@ -5,14 +5,19 @@ plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 
 # Data files
 directory = ''
-fnames = ['nl', 'random', 'mst']
+fnames = ['nl', 'mst', 'random', 'rr']
+# fnames = ['nl', 'random', 'mst']
 fnames = [directory + fname + '.csv' for fname in fnames]
 n_trials = 100
 
-# Curve appearance
-colors = ['tab:orange', 'tab:red', 'tab:green']
-linestyles = ['-', '-.', '--']
-labels = ['Non-Linear Agg. GNN', 'Random', 'MST']
+# # Curve appearance
+# colors = ['tab:orange', 'tab:red', 'tab:green']
+# linestyles = ['-', '-.', '--']
+# labels = ['Non-Linear Agg. GNN', 'Random', 'MST']
+
+colors = ['tab:orange','tab:purple', 'tab:green', 'tab:pink']
+linestyles = ['-', '-.', '--', 'dotted']
+labels = ['GNN', 'MST', 'Random', 'Round Robin']
 
 
 # Generate plot
@@ -26,7 +31,7 @@ for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
 # ax.set_yscale('log')
 plt.ylabel('Avg. Cost')
 plt.xlabel('Agent Velocity Ratio')
-plt.legend(loc='upper right')
+plt.legend(loc='lower right')
 
 # plt.ylim((-25, -9))
 

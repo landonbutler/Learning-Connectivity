@@ -37,14 +37,15 @@ for reward in ['aoi', 'var']:
     plt.xlabel('Agent Velocity Ratio')
 
     if reward == 'aoi':
-        plt.ylim((0, 80))
+        plt.ylim((-20, 120))
+        plt.legend(loc='lower right')
     else:
-        plt.ylim((0, 320))
+        plt.ylim((0, 5))
 
-    plt.legend()
+        plt.legend()
 
     # Save plot as .eps
     # filename = os.path.join(R'C:\Users\Landon\Source\Repos\aoi_multi_agent_swarm\plot\flocking', 'flocking_aoi.eps')
     plt.savefig('flocking_' + reward + '.eps', format='eps', bbox_inches='tight')
     plt.savefig('flocking_' + reward + '.png', format='png', bbox_inches='tight')
-    # plt.show()
+plt.show()

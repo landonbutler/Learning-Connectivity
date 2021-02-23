@@ -6,18 +6,15 @@ plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 # Data files
 directory = ''
 # fnames = ['id', 'nl', 'mst', 'random']
-fnames = ['nl40', 'mst40', 'random40']
+fnames = ['nl', 'mst', 'random', 'rr']
 fnames = [directory + fname + '.csv' for fname in fnames]
 n_trials = 100
 
-# Curve appearance
-# colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
-# linestyles = ['--', '-', '-.', ':']
-# labels = ['Agg. GNN', 'Non-Linear Agg. GNN', 'MST', 'Random']
-
-colors = ['tab:orange', 'tab:green', 'tab:red']
-linestyles = ['-', '-.', '--']
-labels = ['GNN', 'MST', 'Random']
+# colors = ['tab:orange', 'tab:green', 'tab:red']
+# fnames = ['nl20', 'nl60', 'rr', 'mst', 'random']
+colors = ['tab:orange','tab:purple', 'tab:green', 'tab:pink']
+linestyles = ['-', '-.', '--', 'dotted']
+labels = ['GNN', 'MST', 'Random', 'Round Robin']
 
 # Generate plot
 fig = plt.figure(figsize=(6, 4))
@@ -33,6 +30,6 @@ plt.legend(loc='upper right')
 
 # Save plot as .eps
 plt.savefig(directory + 'hops40.eps', format='eps', bbox_inches='tight')
-plt.show()
+# plt.show()
 
 

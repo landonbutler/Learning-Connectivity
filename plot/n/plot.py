@@ -5,7 +5,7 @@ plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 
 # Data files
 directory = ''
-fnames = ['nl20', 'nl60', 'rr', 'mst', 'random']
+fnames = ['train', 'gen', 'rr', 'mst', 'random']
 fnames = [directory + fname + '.csv' for fname in fnames]
 n_trials = 1000
 gnn_n_trials = 100
@@ -13,7 +13,7 @@ gnn_n_trials = 100
 # Curve appearance
 colors = ['tab:orange','tab:blue', 'tab:purple', 'tab:green', 'tab:pink']
 linestyles = ['-', '-', '-.', '--', 'dotted']
-labels = ['NL GNN trained on 40 Agents','NL GNN trained on 60 Agents', 'Round Robin', 'MST', 'Random Flooding']
+labels = ['GNN Trained','GNN Generalization', 'Round Robin', 'MST', 'Random Flooding']
 
 # Generate plot
 fig = plt.figure(figsize=(6, 4))
