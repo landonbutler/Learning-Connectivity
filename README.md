@@ -1,5 +1,8 @@
 # Learning Connectivity for Data Distribution in Robot Teams
-
+<p align="center">
+<img src="https://github.com/landonbutler/Learning-Connectivity/blob/main/visuals/MST-Visual.gif" width="700">
+</p>
+  
 ## Set up
 
 To set this project up to work with Docker, see the `docker/` directory for the Dockerfile and a bash script to start the container.
@@ -28,6 +31,7 @@ where the first argument is the config file that was used for training and the s
 ## Visualization
 
 ```python3 test.py -p <path to model> -e StationaryEnv-v0 -v```
+add -gif to save visualization to a GIF
 
 ## Configuration files
 The following configuration files were used to train the models for the paper:

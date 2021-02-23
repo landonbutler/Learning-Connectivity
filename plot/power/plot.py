@@ -8,7 +8,6 @@ directory = ''
 fnames = ['nl', 'rr', 'mst', 'random']
 fnames = [directory + fname + '.csv' for fname in fnames]
 n_trials = 1000
-gnn_n_trials = 100
 
 # Curve appearance
 colors = ['tab:orange', 'tab:purple', 'tab:green', 'tab:pink']
@@ -22,12 +21,7 @@ ax = fig.add_subplot(1, 1, 1)
 # plt.yscale('log')
 for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
     data = np.loadtxt(fname, skiprows=1)
-    trials = 0
-    if fname is "nl":
-        trials = gnn_n_trials
-    else:
-        trials = n_trials
-    plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(trials), label=label, color=color, ls=ls)
+    plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
 
 # ax.set_yscale('log')
 plt.ylabel('Avg. Cost')

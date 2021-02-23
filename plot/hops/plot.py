@@ -6,18 +6,18 @@ plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 # Data files
 directory = ''
 # fnames = ['id', 'nl', 'mst', 'random']
-fnames = ['nl40', 'mst40', 'random40', 'rr40']
+fnames = ['nl40', 'rr40', 'mst40', 'random40']
 fnames = [directory + fname + '.csv' for fname in fnames]
-n_trials = 100
+n_trials = 1000
 
 # Curve appearance
 # colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
 # linestyles = ['--', '-', '-.', ':']
 # labels = ['Agg. GNN', 'Non-Linear Agg. GNN', 'MST', 'Random']
 
-colors = ['tab:orange', 'tab:green', 'tab:pink', 'tab:purple']
-linestyles = ['-', '--.', 'dotted', '-.']
-labels = ['GNN', 'MST', 'Random Flooding', 'Round Robin']
+colors = ['tab:orange', 'tab:purple', 'tab:green', 'tab:pink']
+linestyles = ['-', '-.', '--', 'dotted']
+labels = ['Non-Linear Agg. GNN', 'Round Robin', 'MST', 'Random Flooding']
 
 # Generate plot
 fig = plt.figure(figsize=(6, 4))

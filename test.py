@@ -85,7 +85,7 @@ def eval_model(env, model, N, render=False):
 
 def save_gif(model_number, timestep, fp, controller):
     filename = fp + controller + str(model_number) + '.gif'
-    with imageio.get_writer(filename, mode='I', duration=.3) as writer:
+    with imageio.get_writer(filename, mode='I', duration=.15) as writer:
         for i in range(1, timestep):
             fileloc = fp + 'ts' + str(int(i)) + '.png'
             image = imageio.imread(fileloc)
@@ -130,8 +130,8 @@ if __name__ == '__main__':
         else:
             print('\nTest over 10  episodes live visualization...')
             eval_model(env, model, 10, render=True)
-
-    print('\nTest over ' + str(args.n_episodes) + ' episodes...')
-    results = eval_model(env, model, args.n_episodes)
-    print('reward,          mean = {:.1f}, std = {:.1f}'.format(np.mean(results['reward']), np.std(results['reward'])))
-    print('')
+    else:
+        print('\nTest over ' + str(args.n_episodes) + ' episodes...')
+        results = eval_model(env, model, args.n_episodes)
+        print('reward,          mean = {:.1f}, std = {:.1f}'.format(np.mean(results['reward']), np.std(results['reward'])))
+        print('')

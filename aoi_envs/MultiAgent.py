@@ -331,7 +331,7 @@ class MultiAgentEnv(gym.Env):
                     type_agents = "Mobile"
                 else:
                     type_agents = "Stationary"
-                self.fig.suptitle('{0} Control Policy of {1} Agents'.format(controller, type_agents), fontsize=16)
+                self.fig.suptitle('{0} Communication Policy for {1} Agents'.format(controller, type_agents), fontsize=16)
 
                 self.fig.subplots_adjust(top=0.9, left=0.1, right=0.9,
                                          bottom=0.12)  # create some space below the plots by increasing the bottom-value
