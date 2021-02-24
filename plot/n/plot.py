@@ -7,7 +7,7 @@ plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 directory = ''
 fnames = ['train', 'gen', 'rr', 'mst', 'random']
 fnames = [directory + fname + '.csv' for fname in fnames]
-n_trials = 1000
+n_trials = 100
 gnn_n_trials = 100
 
 # Curve appearance
@@ -29,8 +29,8 @@ for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
 
 plt.ylabel('Avg. Cost')
 plt.xlabel('Number of Agents')
-plt.legend(loc='lower right')
-# plt.ylim((-25, -9))
+plt.legend(loc='upper left')
+plt.xlim((10, 80))
 
 # Save plot as .eps
 plt.savefig(directory + 'n.eps', format='eps', bbox_inches='tight')

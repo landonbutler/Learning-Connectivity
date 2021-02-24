@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
 # Data files
 directory = ''
 fnames = ['nl', 'mst', 'random', 'rr']
@@ -17,6 +21,7 @@ n_trials = 100
 
 colors = ['tab:orange','tab:purple', 'tab:green', 'tab:pink']
 linestyles = ['-', '-.', '--', 'dotted']
+
 labels = ['GNN', 'MST', 'Random', 'Round Robin']
 
 

@@ -2,13 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
 
 for reward in ['aoi', 'var']:
     # Data files
     directory = reward + '/'
     fnames = ['test_aoitrain_nl', 'test_vartrain_nl', '_baseline_random', '_baseline_mst', '_baseline_rr']
     fnames = [directory + reward + fname + '.csv' for fname in fnames]
-    n_trials = 1000
+    n_trials = 100
     gnn_n_trials = 100
 
     # Curve appearance
@@ -41,8 +44,9 @@ for reward in ['aoi', 'var']:
         plt.legend(loc='lower right')
     else:
         plt.ylim((0, 5))
-
         plt.legend()
+
+    plt.xlim((0.15, 0.5))
 
     # Save plot as .eps
     # filename = os.path.join(R'C:\Users\Landon\Source\Repos\aoi_multi_agent_swarm\plot\flocking', 'flocking_aoi.eps')

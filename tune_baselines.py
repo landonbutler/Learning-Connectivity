@@ -48,15 +48,15 @@ def main():
     # for env_name in env_names:
     #     for param in params:
     #         environments.append(env_name + param + postfix)
-    environments = ['PowerLevel02Env-v0', 'PowerLevel025Env-v0', 'PowerLevel05Env-v0', 'PowerLevel075Env-v0', 'PowerLevel10Env-v0']
+    # environments = ['PowerLevel02Env-v0', 'PowerLevel025Env-v0', 'PowerLevel05Env-v0', 'PowerLevel075Env-v0', 'PowerLevel10Env-v0']
     # environments = ['MobileEnv10N10-v0', 'MobileEnv10N20-v0', 'MobileEnv10N40-v0', 'MobileEnv10N60-v0', 'MobileEnv10N80-v0', 'MobileEnv10N100-v0']
     # environments = ['FlockingAOI025Env-v0',     'FlockingAOI0325Env-v0', 'FlockingAOI05Env-v0',     'FlockingAOI0625Env-v0', 'FlockingAOI075Env-v0']
     # environments = ['Flocking025Env-v0',     'Flocking0325Env-v0', 'Flocking05Env-v0',     'Flocking0625Env-v0', 'Flocking075Env-v0']
-    # environments = ['MobileEnv015-v0', 'MobileEnv025-v0', 'MobileEnv05-v0', 'MobileEnv075-v0', 'MobileEnv10-v0', 'MobileEnv125-v0', 'MobileEnv15-v0']
+    environments = ['MobileEnv015-v0', 'MobileEnv025-v0', 'MobileEnv05-v0', 'MobileEnv075-v0', 'MobileEnv10-v0', 'MobileEnv125-v0', 'MobileEnv15-v0']
 
     filename = "tuned_power.csv"
 
-    baselines = ['Random', 'MST', 'RoundRobin']
+    baselines = ['RoundRobin']
 
     probabilities = [0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3]  #, 0.12, 0.15, 0.18, 0.2, 0.22, 0.25, 0.5]
     # probabilities = [0.08, 0.1, 0.12, 0.15]

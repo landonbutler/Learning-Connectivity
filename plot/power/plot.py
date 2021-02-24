@@ -3,11 +3,16 @@ import matplotlib.pyplot as plt
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 
+import matplotlib
+matplotlib.rcParams['pdf.fonttype'] = 42
+matplotlib.rcParams['ps.fonttype'] = 42
+
 # Data files
 directory = ''
-fnames = ['nl', 'mst', 'random', 'rr']
+fnames = ['nl', 'rr', 'mst', 'random']
+labels = ['GNN', 'Round Robin', 'MST', 'Random Flooding']
 fnames = [directory + fname + '.csv' for fname in fnames]
-n_trials = 1000
+n_trials = 100
 gnn_n_trials = 100
 
 # # Curve appearance
@@ -17,7 +22,7 @@ gnn_n_trials = 100
 
 colors = ['tab:orange','tab:purple', 'tab:green', 'tab:pink']
 linestyles = ['-', '-.', '--', 'dotted']
-labels = ['GNN', 'MST', 'Random', 'Round Robin']
+# labels = ['GNN', 'MST', 'Round Robin', 'Random Flooding']
 
 # Generate plot
 fig = plt.figure(figsize=(6, 4))
@@ -37,7 +42,7 @@ plt.ylabel('Avg. Cost')
 plt.xlabel('Transmission Power Ratio')
 plt.legend(loc='upper right')
 
-# plt.ylim((-25, -9))
+plt.xlim((0.2, 1.0))
 
 # Save plot as .eps
 plt.savefig(directory + 'power.eps', format='eps', bbox_inches='tight')
