@@ -85,7 +85,7 @@ def eval_model(env, model, N, render=False):
 
 def save_gif(model_number, timestep, fp, controller):
     filename = fp + controller + str(model_number) + '.gif'
-    with imageio.get_writer(filename, mode='I', duration=.15) as writer:
+    with imageio.get_writer(filename, mode='I', duration=.25) as writer:
         for i in range(1, timestep):
             fileloc = fp + 'ts' + str(int(i)) + '.png'
             image = imageio.imread(fileloc)
