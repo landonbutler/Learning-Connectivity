@@ -3,6 +3,8 @@
   <a href="https://www.youtube.com/watch?v=UNBvsPZIudU">
 <img src="https://github.com/landonbutler/Learning-Connectivity/blob/main/visuals/MST-Visual.gif" width="700">
     <a\>
+      <br>
+    <a href="https://www.youtube.com/watch?v=UNBvsPZIudU">Video Demonstration<a\>  
 </p>
   
 ## Set up
