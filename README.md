@@ -1,6 +1,8 @@
 # Learning Connectivity for Data Distribution in Robot Teams
 <p align="center">
+  <a href="https://www.youtube.com/watch?v=UNBvsPZIudU">
 <img src="https://github.com/landonbutler/Learning-Connectivity/blob/main/visuals/MST-Visual.gif" width="700">
+    <a\>
 </p>
   
 ## Set up
