@@ -24,7 +24,7 @@ for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
     plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
 
 # ax.set_yscale('log')
-plt.ylabel('Avg. Cost')
+plt.ylabel('Avg. Age of Info. Cost')
 plt.xlabel('Agent Velocity Ratio')
 plt.legend(loc='upper right')
 

@@ -8,7 +8,7 @@ for reward in ['aoi', 'var']:
     directory = reward + '/'
     fnames = ['test_aoitrain_nl', 'test_vartrain_nl', '_baseline_random', '_baseline_mst', '_baseline_rr']
     fnames = [directory + reward + fname + '.csv' for fname in fnames]
-    n_trials = 1000
+    n_trials = 100
 
     # Curve appearance
     colors = ['tab:orange', 'tab:red', 'tab:pink', 'tab:green', 'tab:purple']
@@ -32,11 +32,13 @@ for reward in ['aoi', 'var']:
     plt.xlabel('Agent Velocity Ratio')
 
     if reward == 'aoi':
-        plt.ylim((0, 80))
+        plt.ylim((-20, 120))
+        plt.legend(loc='lower right')
     else:
-        plt.ylim((0, 320))
+        plt.ylim((0, 5))
+        plt.legend(loc='upper left')
 
-    plt.legend()
+    
 
     # Save plot as .eps
     # filename = os.path.join(R'C:\Users\Landon\Source\Repos\aoi_multi_agent_swarm\plot\flocking', 'flocking_aoi.eps')

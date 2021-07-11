@@ -7,12 +7,12 @@ plt.rcParams['font.serif'] = ['Times New Roman'] + plt.rcParams['font.serif']
 directory = ''
 fnames = ['nl', 'rr', 'mst', 'random']
 fnames = [directory + fname + '.csv' for fname in fnames]
-n_trials = 1000
+n_trials = 100
 
 # Curve appearance
 colors = ['tab:orange', 'tab:purple', 'tab:green', 'tab:pink']
 linestyles = ['-', '-.', '--', 'dotted']
-labels = ['Non-Linear Agg. GNN', 'Round Robin', 'MST', 'Random Flooding']
+labels = ['GNN', 'Round Robin', 'MST', 'Random Flooding']
 
 
 # Generate plot
@@ -24,7 +24,7 @@ for fname, label, color, ls in zip(fnames, labels, colors, linestyles):
     plt.errorbar(data[:, 0], -1.0 * data[:, 1], yerr=data[:, 2] / np.sqrt(n_trials), label=label, color=color, ls=ls)
 
 # ax.set_yscale('log')
-plt.ylabel('Avg. Cost')
+plt.ylabel('Avg. Age of Info. Cost')
 plt.xlabel('Transmission Power Ratio')
 plt.legend(loc='upper right')
 
